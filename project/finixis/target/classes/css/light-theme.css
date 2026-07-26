@@ -137,6 +137,32 @@
     -fx-text-fill: -text;
 }
 .page-subtitle { -fx-text-fill: -text-muted; }
+.page-sub      { -fx-text-fill: -text-muted; -fx-font-size: 13px; }
+
+/* ---------- Section cards (page-level grouping boxes) ---------- */
+.section-card {
+    -fx-background-color: -surface;
+    -fx-background-radius: 12;
+    -fx-border-color: -border;
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-padding: 16 18;
+    -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.04), 8, 0, 0, 2);
+}
+.section-title {
+    -fx-font-weight: 700;
+    -fx-font-size: 14px;
+    -fx-text-fill: -text;
+}
+
+/* Email / alert status box */
+.email-status-box {
+    -fx-background-color: -surface-2;
+    -fx-background-radius: 8;
+    -fx-border-color: -border;
+    -fx-border-radius: 8;
+    -fx-padding: 10 14;
+}
 
 /* ---------- Cards ---------- */
 .card {
@@ -237,6 +263,21 @@
 .field:focused, .combo:focused, .text-area:focused {
     -fx-border-color: -primary-500;
 }
+/* Spinner tweaks */
+.spinner > .text-field {
+    -fx-background-color: -surface;
+    -fx-border-color: transparent;
+    -fx-text-fill: -text;
+}
+.spinner .increment-arrow-button,
+.spinner .decrement-arrow-button {
+    -fx-background-color: -surface-2;
+    -fx-border-color: -border;
+    -fx-cursor: hand;
+}
+.spinner .increment-arrow-button:hover,
+.spinner .decrement-arrow-button:hover { -fx-background-color: -neutral-200; }
+
 .search-box {
     -fx-background-color: -surface;
     -fx-border-color: -border;

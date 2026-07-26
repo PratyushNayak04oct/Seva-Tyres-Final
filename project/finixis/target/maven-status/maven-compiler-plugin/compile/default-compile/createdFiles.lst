@@ -65,6 +65,7 @@ com\finixis\viewmodel\ThemeManager.class
 com\finixis\controller\CreditController$3.class
 com\sevatyres\controller\CustomerDetailController.class
 com\sevatyres\model\Invoice.class
+com\sevatyres\controller\AlertsController$RecipientEntry.class
 com\sevatyres\model\InventoryItem$StockStatus.class
 com\finixis\model\Customer.class
 com\finixis\controller\AccountsController$3.class
@@ -132,6 +133,7 @@ com\sevatyres\viewmodel\SessionState.class
 com\finixis\controller\CreditController$5.class
 com\finixis\db\SeedData$1TxnDef.class
 com\finixis\model\Transaction.class
+com\sevatyres\controller\AlertsController$6.class
 com\finixis\db\BalanceTrigger.class
 com\finixis\service\InventoryService.class
 com\sevatyres\model\Invoice$LineItem.class

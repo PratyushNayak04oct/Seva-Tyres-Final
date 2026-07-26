@@ -6,74 +6,86 @@
 <ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.sevatyres.controller.AlertsController"
             fitToWidth="true" fitToHeight="true" styleClass="scroll-pane" hbarPolicy="NEVER">
-    <VBox styleClass="page" prefWidth="960" spacing="20">
 
-        <!-- Header -->
+    <VBox styleClass="page" prefWidth="980" spacing="16">
+
+        <!-- ── Page header ── -->
         <HBox alignment="CENTER_LEFT" spacing="14">
-            <FontIcon iconLiteral="fas-bell" styleClass="page-title"/>
-            <VBox>
+            <FontIcon iconLiteral="fas-bell" style="-fx-icon-size:26; -fx-icon-color:-primary-500;"/>
+            <VBox spacing="2">
                 <Label text="Alerts &amp; Notifications" styleClass="page-title"/>
                 <Label text="Send email or SMS alerts to customers on a recurring schedule." styleClass="page-sub"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
-            <Button text="+ New Alert" styleClass="btn" onAction="#onNewAlert">
+            <Button text="New Alert Campaign" styleClass="btn" onAction="#onNewAlert">
                 <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
             </Button>
         </HBox>
 
         <Separator/>
 
-        <!-- Alert configs table -->
-        <VBox spacing="10">
-            <Label text="Alert Campaigns" style="-fx-font-weight:700; -fx-font-size:15px;"/>
-            <TableView fx:id="alertTable" prefHeight="260">
+        <!-- ── Alert campaigns table ── -->
+        <VBox spacing="12" styleClass="section-card">
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <FontIcon iconLiteral="fas-bullhorn" style="-fx-icon-size:15; -fx-icon-color:-primary-500;"/>
+                <Label text="Alert Campaigns" styleClass="section-title"/>
+            </HBox>
+            <TableView fx:id="alertTable" prefHeight="270">
                 <columns>
-                    <TableColumn fx:id="nameCol"     text="Campaign Name"  prefWidth="180"/>
-                    <TableColumn fx:id="channelCol"  text="Channel"        prefWidth="90"/>
-                    <TableColumn fx:id="intervalCol" text="Every (days)"   prefWidth="100"/>
-                    <TableColumn fx:id="activeCol"   text="Active"         prefWidth="80"/>
-                    <TableColumn fx:id="lastRunCol"  text="Last Run"       prefWidth="160"/>
-                    <TableColumn fx:id="actionCol"   text="Actions"        prefWidth="240"/>
+                    <TableColumn fx:id="nameCol"     text="Campaign Name"   prefWidth="170"/>
+                    <TableColumn fx:id="channelCol"  text="Channel"         prefWidth="80"/>
+                    <TableColumn fx:id="intervalCol" text="Every (days)"    prefWidth="90"/>
+                    <TableColumn fx:id="durationCol" text="Duration (days)" prefWidth="105"/>
+                    <TableColumn fx:id="activeCol"   text="Status"          prefWidth="80"/>
+                    <TableColumn fx:id="lastRunCol"  text="Last Run"        prefWidth="150"/>
+                    <TableColumn fx:id="actionCol"   text="Actions"         prefWidth="255"/>
                 </columns>
-                <placeholder><Label text="No alert campaigns yet. Click '+ New Alert' to create one."/></placeholder>
+                <placeholder>
+                    <Label text="No alert campaigns yet. Click 'New Alert Campaign' to create one."
+                           styleClass="text-muted"/>
+                </placeholder>
             </TableView>
         </VBox>
 
-        <Separator/>
-
-        <!-- Email config status -->
-        <VBox spacing="8">
-            <Label text="Email Configuration" style="-fx-font-weight:700; -fx-font-size:15px;"/>
-            <HBox spacing="12" alignment="CENTER_LEFT">
-                <FontIcon fx:id="emailStatusIcon" iconLiteral="fas-circle" style="-fx-icon-color: #e53e3e;"/>
-                <Label fx:id="emailStatusLabel" text="Email not configured — update application.properties to enable sending."/>
+        <!-- ── Email configuration status ── -->
+        <VBox spacing="10" styleClass="section-card">
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <FontIcon iconLiteral="fas-envelope" style="-fx-icon-size:15; -fx-icon-color:-primary-500;"/>
+                <Label text="Email Configuration" styleClass="section-title"/>
+            </HBox>
+            <HBox spacing="12" alignment="CENTER_LEFT" styleClass="email-status-box">
+                <FontIcon fx:id="emailStatusIcon" iconLiteral="fas-circle" style="-fx-icon-color:#e53e3e; -fx-icon-size:10;"/>
+                <Label fx:id="emailStatusLabel"
+                       text="Email not configured — update application.properties to enable sending."/>
             </HBox>
             <Label text="Set mail.enabled=true and enter SMTP credentials in application.properties to activate email sending."
-                   style="-fx-font-size:12px; -fx-text-fill: -neutral-400;" wrapText="true"/>
+                   styleClass="text-muted,text-sm" wrapText="true"/>
         </VBox>
 
-        <Separator/>
-
-        <!-- Recent send log -->
-        <VBox spacing="8">
+        <!-- ── Recent send log ── -->
+        <VBox spacing="12" styleClass="section-card">
             <HBox alignment="CENTER_LEFT" spacing="10">
-                <Label text="Recent Send Log" style="-fx-font-weight:700; -fx-font-size:15px;"/>
+                <FontIcon iconLiteral="fas-history" style="-fx-icon-size:15; -fx-icon-color:-primary-500;"/>
+                <Label text="Recent Send Log" styleClass="section-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
                 <Button text="Refresh" styleClass="btn,btn-secondary" onAction="#onRefreshLog">
                     <graphic><FontIcon iconLiteral="fas-sync-alt"/></graphic>
                 </Button>
             </HBox>
             <TableView fx:id="logTable" prefHeight="200">
                 <columns>
-                    <TableColumn fx:id="logTimeCol"     text="Sent At"       prefWidth="160"/>
-                    <TableColumn fx:id="logCustomerCol" text="Customer"      prefWidth="160"/>
-                    <TableColumn fx:id="logChannelCol"  text="Channel"       prefWidth="90"/>
-                    <TableColumn fx:id="logStatusCol"   text="Status"        prefWidth="90"/>
-                    <TableColumn fx:id="logMsgCol"      text="Message"       prefWidth="350"/>
+                    <TableColumn fx:id="logTimeCol"     text="Sent At"   prefWidth="150"/>
+                    <TableColumn fx:id="logCustomerCol" text="Customer"  prefWidth="155"/>
+                    <TableColumn fx:id="logChannelCol"  text="Channel"   prefWidth="80"/>
+                    <TableColumn fx:id="logStatusCol"   text="Status"    prefWidth="80"/>
+                    <TableColumn fx:id="logMsgCol"      text="Message"   prefWidth="365"/>
                 </columns>
-                <placeholder><Label text="No alerts sent yet."/></placeholder>
+                <placeholder>
+                    <Label text="No alerts sent yet." styleClass="text-muted"/>
+                </placeholder>
             </TableView>
         </VBox>
 
-        <padding><javafx.geometry.Insets top="20" right="28" bottom="28" left="28"/></padding>
+        <padding><javafx.geometry.Insets top="8" right="28" bottom="28" left="28"/></padding>
     </VBox>
 </ScrollPane>
