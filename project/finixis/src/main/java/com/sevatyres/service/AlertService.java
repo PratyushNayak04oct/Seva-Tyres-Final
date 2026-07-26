@@ -65,14 +65,15 @@ public class AlertService {
     }
 
     private AlertConfig insert(AlertConfig cfg) {
-        String sql = "INSERT INTO Alert_Config(name,message_template,channel,interval_days,is_active) VALUES(?,?,?,?,?)";
+        String sql = "INSERT INTO Alert_Config(name,message_template,channel,interval_days,duration_days,is_active) VALUES(?,?,?,?,?,?)";
         try (Connection con = DatabaseConfig.get();
              PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, cfg.getName());
             ps.setString(2, cfg.getMessageTemplate());
             ps.setString(3, cfg.getChannel().name());
             ps.setInt(4, cfg.getIntervalDays());
-            ps.setBoolean(5, cfg.isActive());
+            ps.setInt(5, cfg.getDurationDays());
+            ps.setBoolean(6, cfg.isActive());
             ps.executeUpdate();
             try (ResultSet k = ps.getGeneratedKeys()) { if (k.next()) cfg.setId(k.getInt(1)); }
         } catch (Exception e) { throw new RuntimeException(e); }
@@ -80,15 +81,16 @@ public class AlertService {
     }
 
     private void update(AlertConfig cfg) {
-        String sql = "UPDATE Alert_Config SET name=?,message_template=?,channel=?,interval_days=?,is_active=? WHERE config_id=?";
+        String sql = "UPDATE Alert_Config SET name=?,message_template=?,channel=?,interval_days=?,duration_days=?,is_active=? WHERE config_id=?";
         try (Connection con = DatabaseConfig.get();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, cfg.getName());
             ps.setString(2, cfg.getMessageTemplate());
             ps.setString(3, cfg.getChannel().name());
             ps.setInt(4, cfg.getIntervalDays());
-            ps.setBoolean(5, cfg.isActive());
-            ps.setInt(6, cfg.getId());
+            ps.setInt(5, cfg.getDurationDays());
+            ps.setBoolean(6, cfg.isActive());
+            ps.setInt(7, cfg.getId());
             ps.executeUpdate();
         } catch (Exception e) { throw new RuntimeException(e); }
     }
@@ -223,6 +225,7 @@ public class AlertService {
         try { cfg.setChannel(AlertConfig.Channel.valueOf(rs.getString("channel"))); }
         catch (Exception ignored) {}
         cfg.setIntervalDays(rs.getInt("interval_days"));
+        try { cfg.setDurationDays(rs.getInt("duration_days")); } catch (Exception ignored) {}
         cfg.setActive(rs.getBoolean("is_active"));
         Timestamp ts = rs.getTimestamp("last_run");
         if (ts != null) cfg.setLastRun(ts.toLocalDateTime());

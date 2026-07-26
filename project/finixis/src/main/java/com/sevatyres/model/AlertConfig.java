@@ -12,6 +12,7 @@ public class AlertConfig {
     private String messageTemplate;
     private Channel channel = Channel.EMAIL;
     private int intervalDays = 7;
+    private int durationDays = 30;
     private boolean active = true;
     private LocalDateTime lastRun;
 
@@ -31,6 +32,9 @@ public class AlertConfig {
 
     public int getIntervalDays() { return intervalDays; }
     public void setIntervalDays(int intervalDays) { this.intervalDays = intervalDays; }
+
+    public int getDurationDays() { return durationDays; }
+    public void setDurationDays(int durationDays) { this.durationDays = durationDays; }
 
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }

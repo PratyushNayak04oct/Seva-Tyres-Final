@@ -76,7 +76,8 @@ public final class DatabaseConfig {
             "ALTER TABLE Sale_Transaction ADD COLUMN inventory_item_id INTEGER",
             // H2: ALTER COLUMN syntax; PostgreSQL: SET DEFAULT '' then OK
             "ALTER TABLE Sale_Transaction ALTER COLUMN bill_no SET DEFAULT ''",
-            "ALTER TABLE Sale_Transaction ALTER COLUMN bill_no VARCHAR(20)"
+            "ALTER TABLE Sale_Transaction ALTER COLUMN bill_no VARCHAR(20)",
+            "ALTER TABLE Alert_Config ADD COLUMN duration_days INTEGER NOT NULL DEFAULT 30"
         };
         try (Connection conn = get(); Statement stmt = conn.createStatement()) {
             for (String sql : migrations) {
