@@ -52,6 +52,19 @@ public class JdbcInventoryRepository implements InventoryRepository {
     }
 
     @Override
+    public Optional<InventoryItem> findByName(String name) {
+        if (name == null || name.isBlank()) return Optional.empty();
+        String sql = SELECT_ALL + " WHERE LOWER(item_name)=LOWER(?)";
+        try (Connection con = DatabaseConfig.get();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, name.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(map(rs)) : Optional.empty();
+            }
+        } catch (SQLException e) { throw new RuntimeException(e); }
+    }
+
+    @Override
     public InventoryItem save(InventoryItem item) {
         if (item.getId() == 0) return insert(item);
         update(item);
@@ -68,7 +81,9 @@ public class JdbcInventoryRepository implements InventoryRepository {
             ps.setString(4, item.getBarcode());
             ps.executeUpdate();
             try (ResultSet k = ps.getGeneratedKeys()) { k.next(); item.setId(k.getInt(1)); }
-        } catch (SQLException e) { throw new RuntimeException(e); }
+        } catch (SQLException e) {
+            throw wrapUniqueName(e, item.getName());
+        }
         return item;
     }
 
@@ -82,7 +97,18 @@ public class JdbcInventoryRepository implements InventoryRepository {
             ps.setString(4, item.getBarcode());
             ps.setInt(5, item.getId());
             ps.executeUpdate();
-        } catch (SQLException e) { throw new RuntimeException(e); }
+        } catch (SQLException e) {
+            throw wrapUniqueName(e, item.getName());
+        }
+    }
+
+    private static RuntimeException wrapUniqueName(SQLException e, String name) {
+        String msg = e.getMessage() != null ? e.getMessage() : "";
+        if (msg.contains("uq_inventory_name") || "23505".equals(e.getSQLState())) {
+            return new IllegalArgumentException(
+                    "An item named \"" + name + "\" already exists. Use a different name or edit the existing item.");
+        }
+        return new RuntimeException(e);
     }
 
     @Override

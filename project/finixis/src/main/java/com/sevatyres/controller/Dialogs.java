@@ -1021,9 +1021,21 @@ public final class Dialogs {
             item.setUnitPrice(price);
             String bc = barcodeField.getText().trim();
             if (!bc.isEmpty()) item.setBarcode(bc);
-            InventoryItem saved = AppServices.inventory().addItem(item);
-            stage.close();
-            if (onSaved != null) onSaved.accept(saved);
+            try {
+                InventoryItem saved = AppServices.inventory().addItem(item);
+                stage.close();
+                if (onSaved != null) onSaved.accept(saved);
+            } catch (IllegalArgumentException ex) {
+                err.setText(ex.getMessage());
+            } catch (RuntimeException ex) {
+                Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                String msg = cause.getMessage() != null ? cause.getMessage() : "Could not save item.";
+                if (msg.contains("uq_inventory_name") || msg.contains("already exists")) {
+                    err.setText("An item named \"" + name + "\" already exists. Use a different name.");
+                } else {
+                    err.setText("Could not save item: " + msg);
+                }
+            }
         });
 
         presentDialog(stage, content, buttonRow(cancelBtn, confirmBtn));
@@ -1072,9 +1084,21 @@ public final class Dialogs {
             item.setUnitPrice(price);
             String bc = barcodeField.getText().trim();
             item.setBarcode(bc.isEmpty() ? null : bc);
-            InventoryItem updated = AppServices.inventory().updateItem(item);
-            stage.close();
-            if (onSaved != null) onSaved.accept(updated);
+            try {
+                InventoryItem updated = AppServices.inventory().updateItem(item);
+                stage.close();
+                if (onSaved != null) onSaved.accept(updated);
+            } catch (IllegalArgumentException ex) {
+                err.setText(ex.getMessage());
+            } catch (RuntimeException ex) {
+                Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                String msg = cause.getMessage() != null ? cause.getMessage() : "Could not save item.";
+                if (msg.contains("uq_inventory_name") || msg.contains("already exists")) {
+                    err.setText("An item named \"" + name + "\" already exists. Use a different name.");
+                } else {
+                    err.setText("Could not save item: " + msg);
+                }
+            }
         });
 
         presentDialog(stage, content, buttonRow(cancelBtn, confirmBtn));

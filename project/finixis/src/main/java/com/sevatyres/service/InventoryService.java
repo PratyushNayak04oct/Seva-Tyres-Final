@@ -23,15 +23,33 @@ public class InventoryService {
         item.setQuantity(quantity);
         item.setUnitPrice(unitPrice);
         item.setReorderLevel(10);
-        return repo.save(item);
+        return addItem(item);
     }
 
     public InventoryItem addItem(InventoryItem item) {
+        ensureUniqueName(item.getName(), 0);
         item.setReorderLevel(10);
         return repo.save(item);
     }
 
-    public InventoryItem updateItem(InventoryItem item) { return repo.save(item); }
+    public InventoryItem updateItem(InventoryItem item) {
+        ensureUniqueName(item.getName(), item.getId());
+        return repo.save(item);
+    }
+
+    /** Throws IllegalArgumentException if another item already uses this name. */
+    private void ensureUniqueName(String name, int excludeId) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Item name is required.");
+        }
+        repo.findByName(name.trim()).ifPresent(existing -> {
+            if (existing.getId() != excludeId) {
+                throw new IllegalArgumentException(
+                        "An item named \"" + name.trim()
+                                + "\" already exists. Use a different name or edit the existing item.");
+            }
+        });
+    }
 
     public void deleteItem(int id) { repo.delete(id); }
 

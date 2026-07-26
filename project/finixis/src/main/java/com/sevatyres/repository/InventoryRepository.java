@@ -8,6 +8,7 @@ public interface InventoryRepository {
     List<InventoryItem>     findAll();
     Optional<InventoryItem> findById(int id);
     Optional<InventoryItem> findByBarcode(String barcode);
+    Optional<InventoryItem> findByName(String name);
     InventoryItem           save(InventoryItem item);
     void                    delete(int id);
     void                    adjustStock(int itemId, int delta);
