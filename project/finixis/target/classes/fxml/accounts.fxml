@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml" fx:controller="com.sevatyres.controller.AccountsController" styleClass="page">
+    <HBox alignment="CENTER_LEFT" spacing="14">
+        <FontIcon iconLiteral="fas-users" styleClass="page-title"/>
+        <VBox>
+            <Label text="Accounts &amp; Customers" styleClass="page-title"/>
+            <Label text="Browse, search, and open customer accounts" styleClass="page-subtitle"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button fx:id="addCustomerBtn" text="Add Customer" styleClass="btn" onAction="#onAddCustomer">
+            <graphic><FontIcon iconLiteral="fas-user-plus"/></graphic>
+        </Button>
+    </HBox>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <TextField fx:id="searchField" promptText="Search customers by name, email, or phone..." styleClass="search-box" onKeyReleased="#onSearch"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Label fx:id="countLabel" text="—" styleClass="chip"/>
+    </HBox>
+
+    <TableView fx:id="table" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="nameCol" text="Customer" prefWidth="240"/>
+            <TableColumn fx:id="contactCol" text="Contact" prefWidth="240"/>
+            <TableColumn fx:id="sinceCol" text="Customer Since" prefWidth="140"/>
+            <TableColumn fx:id="balanceCol" text="Balance" prefWidth="140"/>
+            <TableColumn fx:id="actionCol" text="Actions" minWidth="120" prefWidth="140" sortable="false"/>
+        </columns>
+    </TableView>
+</VBox>

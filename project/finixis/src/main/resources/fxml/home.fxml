@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.*?>
+
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml" fx:controller="com.sevatyres.controller.HomeController"
+            fitToWidth="true" fitToHeight="true" styleClass="scroll-pane" hbarPolicy="NEVER">
+    <VBox styleClass="page" prefWidth="1000">
+        <HBox alignment="CENTER_LEFT" spacing="14">
+            <FontIcon iconLiteral="fas-tachometer-alt" styleClass="page-title" />
+            <VBox>
+                <Label text="Welcome to Seva Tyres" styleClass="page-title"/>
+                <Label text="Customer accounts, inventory, and financial overview" styleClass="page-subtitle"/>
+            </VBox>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="todayLabel" styleClass="chip"/>
+        </HBox>
+
+        <HBox spacing="16">
+            <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                <Label text="Pending Credits" styleClass="stat-label"/>
+                <Label fx:id="pendingCredits" text="—" styleClass="stat-value,stat-negative"/>
+                <Label fx:id="pendingCreditsCount" text="—" styleClass="stat-label"/>
+            </VBox>
+            <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                <Label text="Outstanding Debits" styleClass="stat-label"/>
+                <Label fx:id="pendingDebits" text="—" styleClass="stat-value,stat-negative"/>
+                <Label fx:id="pendingDebitsCount" text="—" styleClass="stat-label"/>
+            </VBox>
+            <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                <Label text="Low-Stock Items" styleClass="stat-label"/>
+                <Label fx:id="lowStock" text="—" styleClass="stat-value"/>
+                <Label text="needs reorder" styleClass="stat-label"/>
+            </VBox>
+            <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                <Label text="Total Customers" styleClass="stat-label"/>
+                <Label fx:id="totalCustomers" text="—" styleClass="stat-value"/>
+                <Label text="active accounts" styleClass="stat-label"/>
+            </VBox>
+        </HBox>
+
+        <VBox styleClass="card,card-pad">
+            <Label text="QUICK ACTIONS" styleClass="card-title"/>
+            <FlowPane hgap="12" vgap="12" prefWrapLength="900">
+                <Button text="View Accounts" styleClass="btn,btn-secondary" onAction="#goAccounts">
+                    <graphic><FontIcon iconLiteral="fas-users"/></graphic>
+                </Button>
+                <Button text="Manage Credit" styleClass="btn,btn-secondary" onAction="#goCredit">
+                    <graphic><FontIcon iconLiteral="fas-credit-card"/></graphic>
+                </Button>
+                <Button text="Manage Inventory" styleClass="btn,btn-secondary" onAction="#goInventory">
+                    <graphic><FontIcon iconLiteral="fas-boxes"/></graphic>
+                </Button>
+                <Button text="Transaction History" styleClass="btn,btn-secondary" onAction="#goTransactions">
+                    <graphic><FontIcon iconLiteral="fas-exchange-alt"/></graphic>
+                </Button>
+                <Button text="Reports &amp; Summary" styleClass="btn,btn-secondary" onAction="#goReports">
+                    <graphic><FontIcon iconLiteral="fas-chart-bar"/></graphic>
+                </Button>
+                <Button text="Create Invoice" styleClass="btn,btn-secondary" onAction="#onCreateInvoice">
+                    <graphic><FontIcon iconLiteral="fas-file-invoice"/></graphic>
+                </Button>
+            </FlowPane>
+        </VBox>
+
+        <VBox styleClass="card,card-pad">
+            <Label text="RECENT ACTIVITY" styleClass="card-title"/>
+            <VBox fx:id="recentBox" spacing="6"/>
+        </VBox>
+    </VBox>
+</ScrollPane>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml" fx:controller="com.sevatyres.controller.CreditController" styleClass="page">
+    <HBox alignment="CENTER_LEFT" spacing="14">
+        <FontIcon iconLiteral="fas-credit-card" styleClass="page-title"/>
+        <VBox>
+            <Label text="Credit Management" styleClass="page-title"/>
+            <Label text="Track and settle pending credits" styleClass="page-subtitle"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button fx:id="addCreditBtn" text="Add New Credit" styleClass="btn" onAction="#onAddCredit">
+            <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
+        </Button>
+    </HBox>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <TextField fx:id="searchField" promptText="Search credits..." styleClass="search-box" onKeyReleased="#onSearch"/>
+        <ComboBox fx:id="statusCombo" styleClass="combo" onAction="#onFilter"/>
+        <ComboBox fx:id="sortCombo" styleClass="combo" onAction="#onSort"/>
+        <Label text="From:" styleClass="txn-meta"/>
+        <DatePicker fx:id="fromDate" prefWidth="140" styleClass="date-picker"/>
+        <Label text="To:" styleClass="txn-meta"/>
+        <DatePicker fx:id="toDate" prefWidth="140" styleClass="date-picker"/>
+        <Button text="Apply" onAction="#onFilter" styleClass="btn,btn-secondary"/>
+    </HBox>
+
+    <TableView fx:id="table" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="customerCol" text="Customer" prefWidth="200"/>
+            <TableColumn fx:id="amountCol" text="Amount" prefWidth="120"/>
+            <TableColumn fx:id="descCol" text="Description" prefWidth="220"/>
+            <TableColumn fx:id="issuedCol" text="Issued" prefWidth="120"/>
+            <TableColumn fx:id="dueCol" text="Due" prefWidth="120"/>
+            <TableColumn fx:id="statusCol" text="Status" prefWidth="120"/>
+            <TableColumn fx:id="actionCol" text="Actions" minWidth="220" prefWidth="240" sortable="false"/>
+        </columns>
+    </TableView>
+</VBox>

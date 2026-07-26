@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.*?>
+
+<!--
+  Task 2: Completely redesigned Transactions page.
+  Shows SaleTransaction table with: Date, Bill No, Particulars, Brand,
+  Qty, Payment summary, Total, Customer, and Action buttons.
+  Only action button is "Generate Report" — no filters needed per requirements.
+-->
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.sevatyres.controller.TransactionsController"
+            fitToWidth="true" fitToHeight="true" styleClass="scroll-pane" hbarPolicy="NEVER">
+    <VBox styleClass="page" prefWidth="1100" spacing="18">
+
+        <!-- Page header + action buttons -->
+        <HBox alignment="CENTER_LEFT" spacing="14">
+            <FontIcon iconLiteral="fas-receipt" styleClass="page-title"/>
+            <VBox>
+                <Label text="Transactions" styleClass="page-title"/>
+                <Label text="All sales transactions for Seva Tyres" styleClass="page-subtitle"/>
+            </VBox>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button fx:id="generateReportBtn" text="Generate Report" styleClass="btn,btn-secondary" onAction="#onGenerateReport">
+                <graphic><FontIcon iconLiteral="fas-file-export"/></graphic>
+            </Button>
+            <Button fx:id="newTxnBtn" text="New Transaction" styleClass="btn" onAction="#onNewTransaction">
+                <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
+            </Button>
+        </HBox>
+
+        <!-- Search bar -->
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <TextField fx:id="searchField" promptText="Search by bill no, particulars, customer…"
+                       styleClass="search-box" onKeyReleased="#onSearch" HBox.hgrow="ALWAYS"/>
+        </HBox>
+
+        <!-- Transactions TableView -->
+        <TableView fx:id="table" styleClass="table-view" VBox.vgrow="ALWAYS">
+            <placeholder><Label text="No transactions yet. Click 'New Transaction' to add one."/></placeholder>
+            <columns>
+                <TableColumn fx:id="dateCol"         text="Date"         prefWidth="100"/>
+                <TableColumn fx:id="billNoCol"       text="Bill No"      prefWidth="80"/>
+                <TableColumn fx:id="particularsCol"  text="Particulars"  prefWidth="180"/>
+                <TableColumn fx:id="brandCol"        text="Brand"        prefWidth="110"/>
+                <TableColumn fx:id="qtyCol"          text="Qty"          prefWidth="60"  style="-fx-alignment:CENTER;"/>
+                <TableColumn fx:id="paymentCol"      text="Payment"      prefWidth="160"/>
+                <TableColumn fx:id="totalCol"        text="Total"        prefWidth="100" style="-fx-alignment:CENTER_RIGHT;"/>
+                <TableColumn fx:id="customerCol"     text="Customer"     prefWidth="130"/>
+                <TableColumn fx:id="actionCol"       text="Actions"      prefWidth="200" sortable="false" style="-fx-alignment:CENTER;"/>
+            </columns>
+        </TableView>
+
+    </VBox>
+</ScrollPane>

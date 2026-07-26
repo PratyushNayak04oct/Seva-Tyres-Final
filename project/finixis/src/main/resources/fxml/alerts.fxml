@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.*?>
+
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.sevatyres.controller.AlertsController"
+            fitToWidth="true" fitToHeight="true" styleClass="scroll-pane" hbarPolicy="NEVER">
+    <VBox styleClass="page" prefWidth="960" spacing="20">
+
+        <!-- Header -->
+        <HBox alignment="CENTER_LEFT" spacing="14">
+            <FontIcon iconLiteral="fas-bell" styleClass="page-title"/>
+            <VBox>
+                <Label text="Alerts &amp; Notifications" styleClass="page-title"/>
+                <Label text="Send email or SMS alerts to customers on a recurring schedule." styleClass="page-sub"/>
+            </VBox>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="+ New Alert" styleClass="btn" onAction="#onNewAlert">
+                <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
+            </Button>
+        </HBox>
+
+        <Separator/>
+
+        <!-- Alert configs table -->
+        <VBox spacing="10">
+            <Label text="Alert Campaigns" style="-fx-font-weight:700; -fx-font-size:15px;"/>
+            <TableView fx:id="alertTable" prefHeight="260">
+                <columns>
+                    <TableColumn fx:id="nameCol"     text="Campaign Name"  prefWidth="180"/>
+                    <TableColumn fx:id="channelCol"  text="Channel"        prefWidth="90"/>
+                    <TableColumn fx:id="intervalCol" text="Every (days)"   prefWidth="100"/>
+                    <TableColumn fx:id="activeCol"   text="Active"         prefWidth="80"/>
+                    <TableColumn fx:id="lastRunCol"  text="Last Run"       prefWidth="160"/>
+                    <TableColumn fx:id="actionCol"   text="Actions"        prefWidth="240"/>
+                </columns>
+                <placeholder><Label text="No alert campaigns yet. Click '+ New Alert' to create one."/></placeholder>
+            </TableView>
+        </VBox>
+
+        <Separator/>
+
+        <!-- Email config status -->
+        <VBox spacing="8">
+            <Label text="Email Configuration" style="-fx-font-weight:700; -fx-font-size:15px;"/>
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <FontIcon fx:id="emailStatusIcon" iconLiteral="fas-circle" style="-fx-icon-color: #e53e3e;"/>
+                <Label fx:id="emailStatusLabel" text="Email not configured — update application.properties to enable sending."/>
+            </HBox>
+            <Label text="Set mail.enabled=true and enter SMTP credentials in application.properties to activate email sending."
+                   style="-fx-font-size:12px; -fx-text-fill: -neutral-400;" wrapText="true"/>
+        </VBox>
+
+        <Separator/>
+
+        <!-- Recent send log -->
+        <VBox spacing="8">
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label text="Recent Send Log" style="-fx-font-weight:700; -fx-font-size:15px;"/>
+                <Button text="Refresh" styleClass="btn,btn-secondary" onAction="#onRefreshLog">
+                    <graphic><FontIcon iconLiteral="fas-sync-alt"/></graphic>
+                </Button>
+            </HBox>
+            <TableView fx:id="logTable" prefHeight="200">
+                <columns>
+                    <TableColumn fx:id="logTimeCol"     text="Sent At"       prefWidth="160"/>
+                    <TableColumn fx:id="logCustomerCol" text="Customer"      prefWidth="160"/>
+                    <TableColumn fx:id="logChannelCol"  text="Channel"       prefWidth="90"/>
+                    <TableColumn fx:id="logStatusCol"   text="Status"        prefWidth="90"/>
+                    <TableColumn fx:id="logMsgCol"      text="Message"       prefWidth="350"/>
+                </columns>
+                <placeholder><Label text="No alerts sent yet."/></placeholder>
+            </TableView>
+        </VBox>
+
+        <padding><javafx.geometry.Insets top="20" right="28" bottom="28" left="28"/></padding>
+    </VBox>
+</ScrollPane>

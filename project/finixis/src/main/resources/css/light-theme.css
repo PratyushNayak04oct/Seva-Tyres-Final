@@ -1,0 +1,498 @@
+/* ===== Finixis Light Theme (base) ===== */
+
+.root, .shell-root {
+    -fx-font-family: "Segoe UI", "Inter", "Roboto", sans-serif;
+    -fx-font-size: 14px;
+
+    /* color ramps */
+    -primary-50:  #eef5ff;
+    -primary-100: #d9e7ff;
+    -primary-300: #6ea3ff;
+    -primary-500: #2563eb;
+    -primary-600: #1d4ed8;
+    -primary-700: #1e40af;
+
+    -accent-500: #0ea5e9;
+
+    -success-100: #d1fae5;
+    -success-500: #10b981;
+    -success-600: #059669;
+
+    -warning-100: #fef3c7;
+    -warning-500: #f59e0b;
+    -warning-600: #d97706;
+
+    -error-100: #fee2e2;
+    -error-500: #ef4444;
+    -error-600: #dc2626;
+
+    -neutral-0:   #ffffff;
+    -neutral-50:  #f8fafc;
+    -neutral-100: #f1f5f9;
+    -neutral-200: #e2e8f0;
+    -neutral-300: #cbd5e1;
+    -neutral-400: #94a3b8;
+    -neutral-500: #64748b;
+    -neutral-600: #475569;
+    -neutral-700: #334155;
+    -neutral-800: #1e293b;
+    -neutral-900: #0f172a;
+
+    /* semantic tokens */
+    -bg:          -neutral-50;
+    -surface:     -neutral-0;
+    -surface-2:   -neutral-100;
+    -border:      -neutral-200;
+    -text:        -neutral-800;
+    -text-muted:  -neutral-500;
+    -text-on-primary: -neutral-0;
+}
+
+* { -fx-text-fill: -text; }
+
+/* ---------- Top bar ---------- */
+.topbar {
+    -fx-background-color: -surface;
+    -fx-border-color: -border;
+    -fx-border-width: 0 0 1 0;
+    -fx-pref-height: 60;
+}
+.topbar-icon {
+    -fx-icon-color: -text-muted;
+    -fx-icon-size: 20;
+    -fx-cursor: hand;
+}
+.topbar-icon:hover { -fx-icon-color: -primary-500; }
+.brand {
+    -fx-font-size: 20px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -primary-600;
+}
+.topbar-label { -fx-text-fill: -text-muted; }
+.theme-btn, .nav-btn {
+    -fx-background-color: -surface-2;
+    -fx-text-fill: -text;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-graphic-text-gap: 6;
+}
+.theme-btn:hover, .nav-btn:hover { -fx-background-color: -primary-50; -fx-text-fill: -primary-600; }
+.nav-btn > .ikonli-font-icon { -fx-icon-color: -text-muted; -fx-icon-size: 15; }
+.nav-btn:hover > .ikonli-font-icon { -fx-icon-color: -primary-500; }
+
+/* ---------- Body ---------- */
+.body { -fx-background-color: -bg; }
+
+/* ---------- Side menu ---------- */
+.side-menu {
+    -fx-background-color: -surface;
+    -fx-border-color: -border;
+    -fx-border-width: 0 1 0 0;
+    -fx-pref-width: 232;
+    -fx-min-width: 232;
+    -fx-max-width: 232;
+}
+.menu-section {
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -neutral-400;
+    -fx-padding: 10 8 6 8;
+}
+.menu-item {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -text;
+    -fx-padding: 10 12;
+    -fx-background-radius: 8;
+    -fx-graphic-text-gap: 12;
+    -fx-cursor: hand;
+    -fx-alignment: BASELINE_LEFT;
+}
+.menu-item > .ikonli-font-icon { -fx-icon-color: -text-muted; -fx-icon-size: 16; }
+.menu-item:hover { -fx-background-color: -surface-2; }
+.menu-item:hover > .ikonli-font-icon { -fx-icon-color: -primary-500; }
+.menu-active {
+    -fx-background-color: -primary-50;
+    -fx-text-fill: -primary-600;
+    -fx-font-weight: 600;
+}
+.menu-active > .ikonli-font-icon { -fx-icon-color: -primary-500; }
+.menu-danger { -fx-text-fill: -error-500; }
+.menu-danger:hover { -fx-background-color: -error-100; }
+.menu-danger > .ikonli-font-icon { -fx-icon-color: -error-500; }
+
+/* ---------- Content host ---------- */
+.content-host { -fx-background-color: -bg; }
+
+/* ---------- Page scaffold ---------- */
+.page {
+    -fx-padding: 28;
+    -fx-spacing: 18;
+    -fx-background-color: -bg;
+}
+.page-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -text;
+}
+.page-subtitle { -fx-text-fill: -text-muted; }
+
+/* ---------- Cards ---------- */
+.card {
+    -fx-background-color: -surface;
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-color: -border;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.06), 10, 0, 0, 2);
+}
+.card-pad { -fx-padding: 18; -fx-spacing: 10; }
+.card-title {
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -neutral-400;
+    -fx-letter-spacing: 0.5;
+}
+
+/* ---------- Stat cards ---------- */
+.stat-card {
+    -fx-padding: 18;
+    -fx-spacing: 6;
+    -fx-background-radius: 14;
+    -fx-background-color: -surface;
+    -fx-border-color: -border;
+    -fx-border-radius: 14;
+}
+.stat-value { -fx-font-size: 26px; -fx-font-weight: 700; }
+.stat-label { -fx-text-fill: -text-muted; -fx-font-size: 12px; }
+.stat-positive { -fx-text-fill: -success-600; }
+.stat-negative { -fx-text-fill: -error-600; }
+
+/* ---------- Balance display (large, on customer detail) ---------- */
+.balance-amount {
+    -fx-font-size: 32px;
+    -fx-font-weight: 700;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+    -fx-background-color: -primary-500;
+    -fx-text-fill: -text-on-primary;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-font-weight: 600;
+    -fx-cursor: hand;
+    -fx-padding: 9 16;
+    -fx-graphic-text-gap: 8;
+}
+.btn:hover { -fx-background-color: -primary-600; }
+.btn > .ikonli-font-icon { -fx-icon-color: -text-on-primary; -fx-icon-size: 14; }
+
+.btn-secondary {
+    -fx-background-color: -surface-2;
+    -fx-text-fill: -text;
+    -fx-border-color: -border;
+}
+.btn-secondary:hover { -fx-background-color: -neutral-200; }
+.btn-secondary > .ikonli-font-icon { -fx-icon-color: -text-muted; }
+
+.btn-danger { -fx-background-color: -error-500; -fx-text-fill: -neutral-0; }
+.btn-danger:hover { -fx-background-color: -error-600; }
+.btn-danger > .ikonli-font-icon { -fx-icon-color: -neutral-0; }
+
+.btn-ghost {
+    -fx-background-color: transparent;
+    -fx-text-fill: -primary-600;
+    -fx-border-color: transparent;
+}
+.btn-ghost:hover { -fx-background-color: -primary-50; }
+.btn-ghost > .ikonli-font-icon { -fx-icon-color: -primary-500; }
+
+.btn:disabled { -fx-opacity: 0.45; -fx-cursor: default; }
+
+/* icon-only round buttons */
+.icon-btn {
+    -fx-background-color: transparent;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 6;
+    -fx-cursor: hand;
+}
+.icon-btn > .ikonli-font-icon { -fx-icon-color: -text-muted; -fx-icon-size: 15; }
+.icon-btn:hover { -fx-background-color: -surface-2; }
+.icon-btn:hover > .ikonli-font-icon { -fx-icon-color: -primary-500; }
+.icon-btn-danger:hover > .ikonli-font-icon { -fx-icon-color: -error-500; }
+
+/* ---------- Inputs ---------- */
+.field, .combo, .text-area {
+    -fx-background-color: -surface;
+    -fx-border-color: -border;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 8 10;
+    -fx-text-fill: -text;
+    -fx-pref-height: 36;
+}
+.field:focused, .combo:focused, .text-area:focused {
+    -fx-border-color: -primary-500;
+}
+.search-box {
+    -fx-background-color: -surface;
+    -fx-border-color: -border;
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
+    -fx-padding: 7 16;
+    -fx-pref-width: 320;
+}
+
+/* ---------- Tables ---------- */
+.table-view {
+    -fx-background-color: -surface;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: -border;
+    -fx-border-width: 1;
+    -fx-table-cell-border-color: -border;
+}
+.table-view .column-header-background {
+    -fx-background-color: -surface-2;
+    -fx-background-radius: 12 12 0 0;
+}
+.table-view .column-header { -fx-background-color: transparent; -fx-pref-height: 42; }
+.table-view .column-header .label {
+    -fx-text-fill: -neutral-500;
+    -fx-font-weight: 700;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 0 12;
+}
+.table-view .table-row-cell   { -fx-cell-size: 46; -fx-background-color: -surface; }
+.table-view .table-row-cell:odd   { -fx-background-color: -neutral-50; }
+.table-view .table-row-cell:hover { -fx-background-color: -primary-50; }
+.table-view .table-row-cell:selected { -fx-background-color: -primary-100; }
+.table-view .table-cell { -fx-padding: 0 12; -fx-text-fill: -text; }
+
+/* ---------- Chips / badges ---------- */
+.chip {
+    -fx-background-color: -surface-2;
+    -fx-text-fill: -text-muted;
+    -fx-background-radius: 999;
+    -fx-padding: 5 12;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+}
+.chip-success { -fx-background-color: -success-100; -fx-text-fill: -success-600; }
+.chip-warning { -fx-background-color: -warning-100; -fx-text-fill: -warning-600; }
+.chip-error   { -fx-background-color: -error-100;   -fx-text-fill: -error-600; }
+.chip-primary { -fx-background-color: -primary-50;  -fx-text-fill: -primary-600; }
+
+.badge {
+    -fx-background-color: -error-500;
+    -fx-text-fill: -neutral-0;
+    -fx-background-radius: 999;
+    -fx-padding: 2 8;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+}
+
+/* ---------- Avatar ---------- */
+.avatar {
+    -fx-background-color: -primary-500;
+    -fx-text-fill: -neutral-0;
+    -fx-background-radius: 999;
+    -fx-alignment: CENTER;
+    -fx-font-weight: 700;
+    -fx-font-size: 22px;
+    -fx-pref-width: 56;
+    -fx-pref-height: 56;
+}
+/* Larger avatar for customer detail page */
+.avatar-lg {
+    -fx-background-color: -primary-500;
+    -fx-text-fill: -neutral-0;
+    -fx-background-radius: 999;
+    -fx-alignment: CENTER;
+    -fx-font-weight: 700;
+    -fx-font-size: 28px;
+    -fx-pref-width: 72;
+    -fx-pref-height: 72;
+    -fx-min-width: 72;
+    -fx-min-height: 72;
+}
+
+/* ---------- Small icon (inline with text) ---------- */
+.icon-sm {
+    -fx-icon-color: -text-muted;
+    -fx-icon-size: 14;
+}
+
+/* ---------- Toast ---------- */
+.toast {
+    -fx-background-color: -neutral-900;
+    -fx-text-fill: -neutral-0;
+    -fx-background-radius: 10;
+    -fx-padding: 11 20;
+    -fx-font-weight: 600;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 12, 0, 0, 3);
+}
+
+/* ---------- Transaction history date groups ---------- */
+.date-group-header {
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -neutral-400;
+    -fx-padding: 14 0 6 0;
+}
+.txn-row {
+    -fx-background-color: -surface;
+    -fx-background-radius: 10;
+    -fx-border-color: -border;
+    -fx-border-radius: 10;
+    -fx-padding: 12 14;
+    -fx-cursor: hand;
+}
+.txn-row:hover { -fx-background-color: -primary-50; -fx-border-color: -primary-300; }
+.txn-row-ongoing { -fx-border-color: -warning-500; -fx-border-width: 1.5; }
+.txn-amount { -fx-font-weight: 700; -fx-font-size: 15px; }
+.txn-desc   { -fx-text-fill: -text; -fx-font-weight: 600; }
+.txn-meta   { -fx-text-fill: -text-muted; -fx-font-size: 12px; }
+
+/* ---------- Dialog root (for custom Stage dialogs) ---------- */
+.dialog-root {
+    -fx-background-color: -bg;
+}
+
+/* ---------- Scrollbars ---------- */
+.scroll-pane { -fx-background-color: transparent; }
+.scroll-pane .viewport { -fx-background-color: transparent; }
+.scroll-bar:horizontal, .scroll-bar:vertical { -fx-background-color: transparent; }
+.scroll-bar .thumb { -fx-background-color: -neutral-300; -fx-background-radius: 999; }
+.scroll-bar .thumb:hover { -fx-background-color: -neutral-400; }
+.scroll-bar .increment-button, .scroll-bar .decrement-button { -fx-background-color: transparent; }
+
+/* ---------- Semantic text color helpers (use instead of inline setStyle) ---------- */
+.text-success { -fx-text-fill: -success-600; }
+.text-error   { -fx-text-fill: -error-600; }
+.text-primary { -fx-text-fill: -primary-600; }
+.text-muted   { -fx-text-fill: -text-muted; }
+.text-normal  { -fx-text-fill: -text; }
+.font-bold    { -fx-font-weight: 700; }
+.text-sm      { -fx-font-size: 12px; }
+
+/* ---------- File row (Reports page) ---------- */
+.file-row {
+    -fx-background-color: -surface;
+    -fx-background-radius: 10;
+    -fx-border-color: -border;
+    -fx-border-radius: 10;
+    -fx-padding: 12 14;
+}
+.file-icon-pdf   { -fx-icon-color: -error-500; -fx-icon-size: 22; }
+.file-icon-excel { -fx-icon-color: -success-500; -fx-icon-size: 22; }
+
+/* ---------- Misc ---------- */
+.sep { -fx-background-color: -border; -fx-pref-height: 1; }
+
+/* Alert / system dialogs inherit theme via ThemeManager */
+.dialog-pane { -fx-background-color: -surface; }
+.dialog-pane .header-panel { -fx-background-color: -surface; }
+.dialog-pane .label { -fx-text-fill: -text; }
+.dialog-pane .content.label { -fx-text-fill: -text; }
+
+/* JavaFX chart theme */
+.chart-plot-background { -fx-background-color: -surface; }
+.chart-vertical-grid-lines { -fx-stroke: -border; }
+.chart-horizontal-grid-lines { -fx-stroke: -border; }
+.axis { -fx-tick-label-fill: -text-muted; }
+.chart-title { -fx-text-fill: -text; }
+.chart-legend { -fx-background-color: transparent; }
+.chart-legend-item-symbol { }
+.default-color0.chart-bar { -fx-bar-fill: -primary-500; }
+.default-color1.chart-bar { -fx-bar-fill: -success-500; }
+
+/* ComboBox popup light mode */
+.combo-box-popup .list-view {
+    -fx-background-color: -surface;
+    -fx-border-color: -border;
+}
+.combo-box-popup .list-cell {
+    -fx-background-color: -surface;
+    -fx-text-fill: -text;
+}
+.combo-box-popup .list-cell:hover,
+.combo-box-popup .list-cell:filled:hover {
+    -fx-background-color: -primary-100;
+    -fx-text-fill: -primary-700;
+}
+.combo-box-popup .list-cell:selected,
+.combo-box-popup .list-cell:filled:selected {
+    -fx-background-color: -primary-600;
+    -fx-text-fill: -neutral-0;
+}
+
+/* Table cell alignment and padding */
+.table-cell {
+    -fx-alignment: CENTER;
+    -fx-padding: 12 16;
+}
+.table-cell.action-cell {
+    -fx-padding: 8 12;
+    -fx-alignment: CENTER;
+}
+.column-header .label {
+    -fx-alignment: CENTER;
+    -fx-padding: 10 16;
+    -fx-font-weight: 700;
+}
+.table-row-cell {
+    -fx-pref-height: 56px;
+    -fx-min-height: 56px;
+}
+
+/* DatePicker light mode */
+.date-picker {
+    -fx-background-color: -surface;
+    -fx-border-color: -border;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+.date-picker .text-field {
+    -fx-background-color: -surface;
+    -fx-text-fill: -text;
+    -fx-border-color: transparent;
+    -fx-pref-height: 36;
+}
+.date-picker-popup {
+    -fx-background-color: -surface;
+    -fx-border-color: -border;
+}
+.date-picker-popup .month-year-pane {
+    -fx-background-color: -surface;
+}
+.date-picker-popup .calendar-grid {
+    -fx-background-color: -surface;
+}
+.date-picker-popup .day-name-cell,
+.date-picker-popup .day-cell {
+    -fx-background-color: -surface;
+    -fx-text-fill: -text;
+}
+.date-picker-popup .day-cell:hover {
+    -fx-background-color: -primary-50;
+}
+.date-picker-popup .selected {
+    -fx-background-color: -primary-500;
+    -fx-text-fill: white;
+}
+.date-picker-popup .today {
+    -fx-border-color: -primary-500;
+}
+
+/* Recent activity card */
+.recent-activity {
+    -fx-background-color: -surface;
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-color: -border;
+    -fx-border-width: 1;
+}

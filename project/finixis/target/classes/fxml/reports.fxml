@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.*?>
+
+<!--
+  Task 8: Monthly breakdown chart removed.
+  Invoice template upload button added.
+-->
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.sevatyres.controller.ReportsController"
+            fitToWidth="true" fitToHeight="true" styleClass="scroll-pane" hbarPolicy="NEVER">
+    <VBox styleClass="page" prefWidth="960" spacing="20">
+
+        <!-- Page header -->
+        <HBox alignment="CENTER_LEFT" spacing="14">
+            <FontIcon iconLiteral="fas-chart-bar" styleClass="page-title"/>
+            <VBox>
+                <Label text="Reports &amp; Summary" styleClass="page-title"/>
+                <Label text="Financial overview and generated file downloads" styleClass="page-subtitle"/>
+            </VBox>
+            <Region HBox.hgrow="ALWAYS"/>
+            <ComboBox fx:id="rangeCombo" styleClass="combo"/>
+        </HBox>
+
+        <!-- Invoice Template Upload (Task 8) -->
+        <VBox styleClass="card,card-pad" spacing="12">
+            <Label text="INVOICE TEMPLATE" styleClass="card-title"/>
+            <HBox spacing="16" alignment="CENTER_LEFT">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Upload Invoice Template" styleClass="form-label"/>
+                    <Label text="Upload a PDF or DOCX template. Customer data will be filled into the template fields when generating invoices." styleClass="txn-meta" wrapText="true"/>
+                </VBox>
+                <VBox spacing="8" alignment="CENTER">
+                    <Button fx:id="uploadTemplateBtn" text="Upload Template" styleClass="btn,btn-secondary" onAction="#onUploadTemplate">
+                        <graphic><FontIcon iconLiteral="fas-upload"/></graphic>
+                    </Button>
+                    <Label fx:id="templatePathLabel" text="No template uploaded" styleClass="txn-meta"/>
+                </VBox>
+            </HBox>
+            <HBox spacing="16" alignment="CENTER_LEFT">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Company Name (shown on invoice)" styleClass="form-label"/>
+                    <TextField fx:id="companyNameField" promptText="Seva Tyres" prefWidth="240" styleClass="field"/>
+                </VBox>
+                <VBox spacing="4">
+                    <Label text="Invoice Format" styleClass="form-label"/>
+                    <ComboBox fx:id="invoiceFormatCombo" prefWidth="200" styleClass="combo"/>
+                </VBox>
+            </HBox>
+        </VBox>
+
+        <!-- Summary stat cards -->
+        <HBox spacing="16">
+            <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                <Label text="Total Credits" styleClass="stat-label"/>
+                <Label fx:id="totalCredits" text="—" styleClass="stat-value,stat-positive"/>
+            </VBox>
+            <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                <Label text="Total Payments" styleClass="stat-label"/>
+                <Label fx:id="totalDebits" text="—" styleClass="stat-value,stat-negative"/>
+            </VBox>
+            <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                <Label text="Net Outstanding" styleClass="stat-label"/>
+                <Label fx:id="netLabel" text="—" styleClass="stat-value"/>
+            </VBox>
+        </HBox>
+
+        <!-- Generated Files section -->
+        <VBox styleClass="card,card-pad" spacing="12">
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <FontIcon iconLiteral="fas-folder-open" styleClass="icon-sm"/>
+                <Label text="GENERATED FILES" styleClass="card-title" HBox.hgrow="ALWAYS"/>
+                <Label text="Files persist for this session — click Download to open/save." styleClass="txn-meta"/>
+            </HBox>
+            <VBox fx:id="filesBox" spacing="6"/>
+        </VBox>
+
+    </VBox>
+</ScrollPane>

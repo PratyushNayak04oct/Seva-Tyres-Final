@@ -1,0 +1,155 @@
+/* ===== Finixis Dark Theme — variable overrides only ===== */
+/* All component rules are defined in light-theme.css (which is always loaded first). */
+/* This file ONLY redefines the CSS variables. */
+
+.root, .shell-root {
+    -primary-50:  #0b1f3a;
+    -primary-100: #142b4d;
+    -primary-300: #60a5fa;
+    -primary-500: #3b82f6;
+    -primary-600: #2563eb;
+    -primary-700: #1d4ed8;
+
+    -accent-500: #38bdf8;
+
+    -success-100: #064e3b;
+    -success-500: #10b981;
+    -success-600: #34d399;
+
+    -warning-100: #78350f;
+    -warning-500: #f59e0b;
+    -warning-600: #fbbf24;
+
+    -error-100: #7f1d1d;
+    -error-500: #ef4444;
+    -error-600: #f87171;
+
+    -neutral-0:   #0f172a;
+    -neutral-50:  #1e293b;
+    -neutral-100: #1e293b;
+    -neutral-200: #334155;
+    -neutral-300: #475569;
+    -neutral-400: #64748b;
+    -neutral-500: #94a3b8;
+    -neutral-600: #cbd5e1;
+    -neutral-700: #e2e8f0;
+    -neutral-800: #f1f5f9;
+    -neutral-900: #f8fafc;
+
+    -bg:          #0b1120;
+    -surface:     #111827;
+    -surface-2:   #1e293b;
+    -border:      #243044;
+    -text:        #e2e8f0;
+    -text-muted:  #94a3b8;
+    -text-on-primary: #ffffff;
+}
+
+/* Dark-specific table row override */
+.table-view .table-row-cell:odd { -fx-background-color: #0f1a2e; }
+
+/* Dark mode dialog button tweak */
+.dialog-pane .button {
+    -fx-background-color: -surface-2;
+    -fx-text-fill: -text;
+    -fx-border-color: -border;
+}
+
+/* Chart dark overrides */
+.chart-plot-background { -fx-background-color: #111827; }
+
+/* ComboBox dropdown dark mode — hardcoded hex so popup scenes (which don't inherit root vars) work */
+.combo-box-popup .list-view {
+    -fx-background-color: #1f2937;
+    -fx-border-color: #374151;
+}
+.combo-box-popup .list-cell {
+    -fx-background-color: #1f2937;
+    -fx-text-fill: #f9fafb;
+}
+.combo-box-popup .list-cell:hover,
+.combo-box-popup .list-cell:filled:hover {
+    -fx-background-color: #374151;
+    -fx-text-fill: #f9fafb;
+}
+.combo-box-popup .list-cell:selected,
+.combo-box-popup .list-cell:filled:selected {
+    -fx-background-color: #2563eb;
+    -fx-text-fill: #ffffff;
+}
+
+/* TableView header dark mode */
+.table-view .column-header-background {
+    -fx-background-color: #1f2937;
+}
+.table-view .column-header, .table-view .filler {
+    -fx-background-color: #1f2937;
+    -fx-border-color: #374151;
+}
+.table-view .column-header .label {
+    -fx-text-fill: #f9fafb;
+    -fx-font-weight: 600;
+}
+.table-view .table-row-cell {
+    -fx-background-color: #111827;
+}
+.table-view .table-row-cell:odd {
+    -fx-background-color: #0f1a2e;
+}
+.table-view .table-row-cell:hover {
+    -fx-background-color: #142b4d;
+}
+.table-view .table-row-cell:selected {
+    -fx-background-color: #1e3a5f;
+}
+.table-view .table-cell {
+    -fx-text-fill: #f9fafb;
+    -fx-border-color: #374151;
+}
+
+/* DatePicker dark mode — hardcoded hex for popup scene compatibility */
+.date-picker .text-field {
+    -fx-background-color: #1f2937;
+    -fx-text-fill: #f9fafb;
+    -fx-border-color: #374151;
+}
+.date-picker-popup {
+    -fx-background-color: #1f2937;
+    -fx-border-color: #374151;
+}
+.date-picker-popup > * {
+    -fx-background-color: #1f2937;
+}
+.date-picker-popup .month-year-pane {
+    -fx-background-color: #1f2937;
+}
+.date-picker-popup .calendar-grid {
+    -fx-background-color: #1f2937;
+}
+.date-picker-popup .day-name-cell,
+.date-picker-popup .day-cell {
+    -fx-background-color: #1f2937;
+    -fx-text-fill: #f9fafb;
+}
+.date-picker-popup .day-cell:hover {
+    -fx-background-color: #374151;
+}
+.date-picker-popup .selected {
+    -fx-background-color: #2563eb;
+    -fx-text-fill: #ffffff;
+}
+.date-picker-popup .today {
+    -fx-border-color: #2563eb;
+}
+.date-picker-popup .spinner .button {
+    -fx-background-color: #374151;
+}
+.date-picker-popup .spinner .button .left-arrow,
+.date-picker-popup .spinner .button .right-arrow {
+    -fx-background-color: #f9fafb;
+}
+
+/* card / recent-activity background in dark mode */
+.card, .card-pad, .recent-activity-card {
+    -fx-background-color: -surface;
+}

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml" fx:controller="com.sevatyres.controller.InventoryController" styleClass="page">
+    <HBox alignment="CENTER_LEFT" spacing="14">
+        <FontIcon iconLiteral="fas-boxes" styleClass="page-title"/>
+        <VBox>
+            <Label text="Inventory" styleClass="page-title"/>
+            <Label text="Manage stock levels and items" styleClass="page-subtitle"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button fx:id="stockBtn" text="Stock In / Out" styleClass="btn,btn-secondary" onAction="#onStock">
+            <graphic><FontIcon iconLiteral="fas-truck"/></graphic>
+        </Button>
+        <Button fx:id="addItemBtn" text="Add New Item" styleClass="btn" onAction="#onAddItem">
+            <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
+        </Button>
+    </HBox>
+
+    <HBox spacing="10">
+        <TextField fx:id="searchField" promptText="Search items..." styleClass="search-box" onKeyReleased="#onSearch"/>
+        <Label fx:id="lowStockLabel" styleClass="chip,chip-warning"/>
+    </HBox>
+
+    <TableView fx:id="table" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="nameCol" text="Item" prefWidth="200"/>
+            <TableColumn fx:id="skuCol" text="SKU" prefWidth="120"/>
+            <TableColumn fx:id="catCol" text="Category" prefWidth="160"/>
+            <TableColumn fx:id="qtyCol" text="Qty" prefWidth="80"/>
+            <TableColumn fx:id="priceCol" text="Unit Price" prefWidth="110"/>
+            <TableColumn fx:id="stockCol" text="Status" prefWidth="120"/>
+            <TableColumn fx:id="actionCol" text="Actions" minWidth="220" prefWidth="240" sortable="false"/>
+        </columns>
+    </TableView>
+</VBox>

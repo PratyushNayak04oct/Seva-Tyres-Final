@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.*?>
+
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.sevatyres.controller.CustomerDetailController"
+            fitToWidth="true" fitToHeight="true" styleClass="scroll-pane" hbarPolicy="NEVER">
+
+    <VBox styleClass="page" prefWidth="960" spacing="20">
+
+        <!-- Back button -->
+        <Button text="Back to Accounts" styleClass="btn,btn-ghost" onAction="#onBack" alignment="BASELINE_LEFT">
+            <graphic><FontIcon iconLiteral="fas-arrow-left"/></graphic>
+        </Button>
+
+        <!-- ── Customer summary card ── -->
+        <VBox styleClass="card,card-pad" spacing="16">
+            <HBox spacing="20" alignment="CENTER_LEFT">
+                <!-- Avatar -->
+                <Label fx:id="avatar" text="?" styleClass="avatar-lg"/>
+
+                <!-- Name + contact + since -->
+                <VBox spacing="5" HBox.hgrow="ALWAYS">
+                    <Label fx:id="nameLabel" text="—" style="-fx-font-size:22px; -fx-font-weight:700;"/>
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <FontIcon iconLiteral="fas-envelope" styleClass="icon-sm"/>
+                        <Label fx:id="emailLabel" text="—" styleClass="txn-meta"/>
+                    </HBox>
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <FontIcon iconLiteral="fas-phone" styleClass="icon-sm"/>
+                        <Label fx:id="phoneLabel" text="—" styleClass="txn-meta"/>
+                    </HBox>
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <FontIcon iconLiteral="fas-calendar-alt" styleClass="icon-sm"/>
+                        <Label fx:id="sinceLabel" text="—" styleClass="txn-meta"/>
+                    </HBox>
+                </VBox>
+
+                <!-- Balance (large, color-coded) -->
+                <VBox alignment="CENTER_RIGHT" spacing="4" minWidth="180">
+                    <Label text="CURRENT BALANCE" styleClass="stat-label"/>
+                    <Label fx:id="balanceLabel" text="—" styleClass="balance-amount"/>
+                    <Label fx:id="balanceNote" text="—" styleClass="txn-meta"/>
+                </VBox>
+            </HBox>
+        </VBox>
+
+        <!-- ── Quick-glance stat chips ── -->
+        <HBox spacing="10">
+            <Label fx:id="chipTxns" text="—" styleClass="chip,chip-primary"/>
+            <Label fx:id="chipLast" text="—" styleClass="chip"/>
+            <Label fx:id="chipOngoing" text="—" styleClass="chip,chip-warning"/>
+        </HBox>
+
+        <!-- ── Primary actions row ── -->
+        <HBox spacing="12" alignment="CENTER_LEFT">
+            <Button fx:id="addDebitBtn" text="Add Debit" styleClass="btn,btn-secondary" onAction="#onAddDebit">
+                <graphic><FontIcon iconLiteral="fas-minus-circle"/></graphic>
+            </Button>
+            <Button fx:id="recordPaymentBtn" text="Record Payment" styleClass="btn" onAction="#onRecordPayment">
+                <graphic><FontIcon iconLiteral="fas-money-bill-wave"/></graphic>
+            </Button>
+
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <!-- Delete is visually separated to avoid accidental taps -->
+            <Button fx:id="deleteBtn" text="Delete Customer" styleClass="btn,btn-danger" onAction="#onDelete">
+                <graphic><FontIcon iconLiteral="fas-trash"/></graphic>
+            </Button>
+        </HBox>
+
+        <!-- ── Transaction history section ── -->
+        <VBox styleClass="card,card-pad" spacing="8">
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <FontIcon iconLiteral="fas-history" styleClass="icon-sm"/>
+                <Label text="TRANSACTION HISTORY" styleClass="card-title" HBox.hgrow="ALWAYS"/>
+            </HBox>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <ComboBox fx:id="dateRangeCombo" styleClass="combo" prefWidth="140" onAction="#onDateRange"/>
+                <Label text="From:" styleClass="txn-meta"/>
+                <DatePicker fx:id="fromDate" styleClass="date-picker" prefWidth="140"/>
+                <Label text="To:" styleClass="txn-meta"/>
+                <DatePicker fx:id="toDate" styleClass="date-picker" prefWidth="140"/>
+                <Button text="Apply" onAction="#onDateRange" styleClass="btn,btn-secondary"/>
+            </HBox>
+            <VBox fx:id="historyBox" spacing="6"/>
+        </VBox>
+
+    </VBox>
+</ScrollPane>
