@@ -14,7 +14,10 @@
                 <Label text="Customer accounts, inventory, and financial overview" styleClass="page-subtitle"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
-            <Label fx:id="todayLabel" styleClass="chip"/>
+            <VBox alignment="CENTER_RIGHT" spacing="4">
+                <Label fx:id="todayLabel" styleClass="chip"/>
+                <Label fx:id="clockLabel" text="00:00:00 IST" styleClass="ist-clock"/>
+            </VBox>
         </HBox>
 
         <HBox spacing="16">

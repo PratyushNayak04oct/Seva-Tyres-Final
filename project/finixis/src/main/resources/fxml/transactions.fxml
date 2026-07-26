@@ -48,7 +48,7 @@
                 <TableColumn fx:id="paymentCol"      text="Payment"      prefWidth="160"/>
                 <TableColumn fx:id="totalCol"        text="Total"        prefWidth="100" style="-fx-alignment:CENTER_RIGHT;"/>
                 <TableColumn fx:id="customerCol"     text="Customer"     prefWidth="130"/>
-                <TableColumn fx:id="actionCol"       text="Actions"      prefWidth="200" sortable="false" style="-fx-alignment:CENTER;"/>
+                <TableColumn fx:id="actionCol"       text="Actions"      prefWidth="280" minWidth="260" sortable="false" style="-fx-alignment:CENTER;"/>
             </columns>
         </TableView>
 

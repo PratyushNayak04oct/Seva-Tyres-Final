@@ -2,7 +2,7 @@ package com.sevatyres.service;
 
 import com.sevatyres.model.Customer;
 import com.sevatyres.model.SaleTransaction;
-import com.sevatyres.model.TransactionLineItem;
+import com.sevatyres.model.SaleTransactionItem;
 import com.sevatyres.repository.SaleTransactionRepository;
 import com.sevatyres.repository.impl.JdbcSaleTransactionRepository;
 
@@ -29,21 +29,67 @@ public class SaleTransactionService {
     public List<SaleTransaction> getByCustomer(int customerId) { return repo.findByCustomerId(customerId); }
 
     /**
-     * Saves a sale transaction, then:
+     * Saves a single-item sale transaction, then:
      *  1. Deducts stock from Inventory if an inventory item was linked.
-     *  2. Creates a Transaction_Credit entry if there is a remaining unpaid balance.
+     *  2. Creates a Transaction_Credit entry (NOT Debit) if there is an unpaid balance.
      */
     public SaleTransaction save(SaleTransaction tx) {
-        // Auto-generate bill number if blank
+        return save(tx, List.of());
+    }
+
+    /**
+     * Saves a multi-item sale transaction.
+     *  1. Computes total from items (or falls back to unit_price × quantity).
+     *  2. Deducts stock for each linked inventory item.
+     *  3. Creates a Transaction_Credit entry if there is an unpaid balance.
+     */
+    public SaleTransaction save(SaleTransaction tx, List<SaleTransactionItem> items) {
         if (tx.getBillNo() == null || tx.getBillNo().isBlank()) {
             tx.setBillNo("B" + System.currentTimeMillis() % 100000);
         }
 
-        tx.computeTotal();
+        // If multi-item, override total from items list
+        if (!items.isEmpty()) {
+            double itemsTotal = items.stream().mapToDouble(SaleTransactionItem::getLineTotal).sum();
+            tx.setTotal(itemsTotal);
+            double paid = tx.getPhonePe() + tx.getAccountTransfer() + tx.getCardSwipe()
+                    + tx.getBajajFinance() + tx.getCash() + tx.getCheque();
+            tx.setCreditAmount(Math.max(0, itemsTotal - paid));
+            // Summarise particulars from items
+            if (tx.getParticulars() == null || tx.getParticulars().isBlank()) {
+                StringBuilder sb = new StringBuilder();
+                for (SaleTransactionItem it : items) {
+                    if (!sb.isEmpty()) sb.append(", ");
+                    sb.append(it.getItemName()).append(" ×").append(it.getQuantity());
+                }
+                tx.setParticulars(sb.toString());
+            }
+            tx.setQuantity(0);
+            tx.setUnitPrice(0);
+        } else {
+            tx.computeTotal();
+        }
+
         SaleTransaction saved = repo.save(tx);
 
-        // Deduct inventory stock
-        if (saved.getInventoryItemId() != null && saved.getQuantity() > 0) {
+        // Save line items
+        if (!items.isEmpty()) {
+            ((JdbcSaleTransactionRepository) repo).saveItems(saved.getId(), items);
+        }
+
+        // Deduct inventory stock per item (or single item)
+        if (!items.isEmpty()) {
+            var invRepo = new com.sevatyres.repository.impl.JdbcInventoryRepository();
+            for (SaleTransactionItem it : items) {
+                if (it.getInventoryId() != null && it.getQuantity() > 0) {
+                    try { invRepo.adjustStock(it.getInventoryId(), -it.getQuantity()); }
+                    catch (Exception e) {
+                        System.err.println("[SaleTransaction] Stock deduction failed for item "
+                                + it.getItemName() + ": " + e.getMessage());
+                    }
+                }
+            }
+        } else if (saved.getInventoryItemId() != null && saved.getQuantity() > 0) {
             try {
                 new com.sevatyres.repository.impl.JdbcInventoryRepository()
                         .adjustStock(saved.getInventoryItemId(), -saved.getQuantity());
@@ -52,11 +98,10 @@ public class SaleTransactionService {
             }
         }
 
-        // Auto-create credit entry if remaining balance > 0
-        if (saved.getCreditAmount() > 0.009 && saved.getCustomerName() != null
-                && !saved.getCustomerName().isBlank()) {
+        // Create Transaction_Credit (money customer OWES us) when there is remaining balance
+        if (saved.getCreditAmount() > 0.009
+                && saved.getCustomerName() != null && !saved.getCustomerName().isBlank()) {
             try {
-                // Ensure customer exists in DB
                 CustomerService custService = new CustomerService();
                 Customer customer = null;
                 if (saved.getCustomerId() != null) {
@@ -66,27 +111,30 @@ public class SaleTransactionService {
                 }
                 if (customer == null) {
                     customer = custService.addCustomer(
-                            saved.getCustomerName(),
-                            saved.getCustomerPhone(),
-                            saved.getCustomerEmail(),
-                            saved.getCustomerAddress());
+                            saved.getCustomerName(), saved.getCustomerPhone(),
+                            saved.getCustomerEmail(), saved.getCustomerAddress());
                     saved.setCustomerId(customer.getId());
                     repo.update(saved);
                 }
 
                 TransactionService txnService = new TransactionService();
                 String note = "Credit from Bill " + saved.getBillNo() + " — " + saved.getParticulars();
-                txnService.addDebit(customer.getId(), customer.getName(), saved.getCreditAmount(), note);
+                // Correctly records as Transaction_Credit (money owed to the business)
+                txnService.addCreditForSale(customer.getId(), customer.getName(), saved.getCreditAmount(), note);
             } catch (Exception e) {
-                System.err.println("[SaleTransaction] Credit entry creation failed: " + e.getMessage());
+                System.err.println("[SaleTransaction] Transaction_Credit creation failed: " + e.getMessage());
             }
         }
 
         return saved;
     }
 
+    /**
+     * Persists payment / credit changes without recomputing from unitPrice×qty.
+     * Callers must set paid amounts, creditAmount and total explicitly
+     * (important for multi-item bills and edit-payment flows).
+     */
     public void update(SaleTransaction tx) {
-        tx.computeTotal();
         repo.update(tx);
     }
 

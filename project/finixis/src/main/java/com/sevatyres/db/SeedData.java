@@ -13,14 +13,9 @@ public final class SeedData {
     private SeedData() {}
 
     public static void seed() {
-        try (Connection c = DatabaseConfig.get()) {
-            if (hasData(c)) return;
-            insertCustomers(c);
-            insertInventory(c);
-            insertTransactions(c);
-        } catch (Exception e) {
-            System.err.println("[SeedData] Warning: could not seed demo data — " + e.getMessage());
-        }
+        // Demo data is disabled — the application starts with a clean database.
+        // To manually populate test data, re-enable the insertCustomers / insertInventory
+        // / insertTransactions calls below.
     }
 
     private static boolean hasData(Connection c) throws SQLException {

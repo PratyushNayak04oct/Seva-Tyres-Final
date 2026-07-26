@@ -238,4 +238,32 @@ public class AlertService {
     }
 
     public boolean isEmailConfigured() { return emailEnabled && !smtpUser.isBlank(); }
+
+    /**
+     * Ensures a system "Credit Payment Reminder" campaign exists.
+     * Sends every 5 days; campaign duration 365 days.
+     * Actual start delay of 15 days after the transaction date is enforced
+     * by EmailService.sendCreditReminders().
+     */
+    public void ensureCreditPaymentCampaign() {
+        final String CAMPAIGN_NAME = "Credit Payment Reminder";
+        boolean exists = getAll().stream()
+                .anyMatch(c -> CAMPAIGN_NAME.equalsIgnoreCase(c.getName()));
+        if (exists) return;
+
+        AlertConfig cfg = new AlertConfig();
+        cfg.setName(CAMPAIGN_NAME);
+        cfg.setMessageTemplate(
+                "Dear {name},\n\n"
+                + "This is a friendly reminder from Seva Tyres regarding your outstanding credit balance.\n\n"
+                + "Please clear your dues at your earliest convenience.\n\n"
+                + "Thank you for choosing Seva Tyres.\n"
+                + "Best regards,\nSeva Tyres");
+        cfg.setChannel(AlertConfig.Channel.EMAIL);
+        cfg.setIntervalDays(5);   // every 5 days
+        cfg.setDurationDays(365); // keep running for a year
+        cfg.setActive(true);
+        save(cfg);
+        LOG.info("[AlertService] Created default campaign: " + CAMPAIGN_NAME);
+    }
 }

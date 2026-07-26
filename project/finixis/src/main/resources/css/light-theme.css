@@ -56,6 +56,19 @@
     -fx-border-color: -border;
     -fx-border-width: 0 0 1 0;
     -fx-pref-height: 60;
+    -fx-min-height: 60;
+    -fx-max-height: 60;
+}
+.shell-root > .topbar {
+    -fx-pref-height: 60;
+    -fx-min-height: 60;
+    -fx-max-height: 60;
+}
+.ist-clock {
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-text-fill: -primary-600;
 }
 .topbar-icon {
     -fx-icon-color: -text-muted;
@@ -262,6 +275,17 @@
 }
 .field:focused, .combo:focused, .text-area:focused {
     -fx-border-color: -primary-500;
+}
+/* TextArea nested content (JavaFX paints a separate white pane by default) */
+.text-area .content {
+    -fx-background-color: -surface;
+    -fx-background-radius: 6;
+}
+.text-area .content .text {
+    -fx-fill: -text;
+}
+.text-area {
+    -fx-control-inner-background: -surface;
 }
 /* Spinner tweaks */
 .spinner > .text-field {

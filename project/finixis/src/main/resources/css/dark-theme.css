@@ -153,3 +153,25 @@
 .card, .card-pad, .recent-activity-card {
     -fx-background-color: -surface;
 }
+
+/* TextArea — force dark background so white text is readable */
+.text-area {
+    -fx-background-color: #1e293b;
+    -fx-control-inner-background: #1e293b;
+    -fx-text-fill: #e2e8f0;
+    -fx-border-color: #334155;
+}
+.text-area .content {
+    -fx-background-color: #1e293b;
+}
+.text-area .content .text {
+    -fx-fill: #e2e8f0;
+}
+.text-area:focused {
+    -fx-border-color: #3b82f6;
+}
+
+/* IST clock accent in dark mode */
+.ist-clock {
+    -fx-text-fill: #60a5fa;
+}

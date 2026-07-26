@@ -2,6 +2,8 @@ package com.sevatyres.controller;
 
 import java.net.URL;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.ResourceBundle;
@@ -16,6 +18,9 @@ import com.sevatyres.service.InventoryService;
 import com.sevatyres.service.TransactionService;
 import com.sevatyres.viewmodel.UiUtil;
 
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
@@ -25,12 +30,17 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
 
 public class HomeController implements Initializable, PageController {
 
-    @FXML private Label todayLabel, pendingCredits, pendingCreditsCount,
+    @FXML private Label todayLabel, clockLabel, pendingCredits, pendingCreditsCount,
             pendingDebits, pendingDebitsCount, lowStock, totalCustomers;
     @FXML private VBox recentBox;
+
+    private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
+    private Timeline clockTimeline;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -38,7 +48,8 @@ public class HomeController implements Initializable, PageController {
         InventoryService   inventory    = AppServices.inventory();
         TransactionService transactions = AppServices.transactions();
 
-        todayLabel.setText(LocalDate.now().format(DateTimeFormatter.ofPattern("MMM d, yyyy")));
+        todayLabel.setText(LocalDate.now(IST).format(DateTimeFormatter.ofPattern("MMM d, yyyy")));
+        startIstClock();
 
         double creditTotal = transactions.totalCreditOutstanding();
         long   creditCount = transactions.getAllCredits().stream().filter(Transaction::isOngoing).count();
@@ -106,6 +117,18 @@ public class HomeController implements Initializable, PageController {
 
         row.getChildren().addAll(avatar, left, spacer, dateLabel, openBtn);
         return row;
+    }
+
+    private void startIstClock() {
+        Runnable tick = () -> {
+            if (clockLabel != null) {
+                clockLabel.setText(ZonedDateTime.now(IST).format(TIME_FMT) + " IST");
+            }
+        };
+        tick.run();
+        clockTimeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> tick.run()));
+        clockTimeline.setCycleCount(Animation.INDEFINITE);
+        clockTimeline.play();
     }
 
     @FXML private void goAccounts()     { App.getShell().navigate("accounts"); }

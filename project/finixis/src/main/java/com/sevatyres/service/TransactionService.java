@@ -43,6 +43,25 @@ public class TransactionService {
         return repo.saveCredit(tx, items);
     }
 
+    /**
+     * Records money the customer owes the business (credit sale).
+     * Creates a Transaction_Credit row with paid_amount=0, balance=amount.
+     */
+    public Transaction addCreditForSale(int customerId, String customerName,
+                                        double amount, String notes) {
+        Transaction tx = new Transaction();
+        tx.setCustomerId(customerId);
+        tx.setCustomerName(customerName);
+        tx.setType(Transaction.Type.CREDIT);
+        tx.setAmount(amount);
+        tx.setPaidAmount(0);
+        tx.setBalance(amount);
+        tx.setDate(java.time.LocalDate.now());
+        tx.setDescription(notes);
+        tx.setOngoing(true);
+        return repo.saveCredit(tx, java.util.List.of());
+    }
+
     public Transaction addDebit(int customerId, String customerName,
                                 double amount, String notes) {
         Transaction tx = new Transaction();

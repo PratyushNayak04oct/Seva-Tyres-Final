@@ -47,15 +47,24 @@ public class EmailService {
             if (is == null) return;
             Properties props = new Properties();
             props.load(is);
-            enabled  = Boolean.parseBoolean(props.getProperty("email.enabled", "false"));
-            smtpHost = props.getProperty("email.smtp.host", "smtp.gmail.com");
-            smtpPort = Integer.parseInt(props.getProperty("email.smtp.port", "587"));
-            username = props.getProperty("email.smtp.username", "");
-            password = props.getProperty("email.smtp.password", "");
-            fromName = props.getProperty("email.from.name", "Seva Tyres");
+            // Prefer mail.* keys (application.properties); fall back to legacy email.* keys
+            enabled  = Boolean.parseBoolean(first(props, "mail.enabled", "email.enabled", "false"));
+            smtpHost = first(props, "mail.host", "email.smtp.host", "smtp.gmail.com");
+            smtpPort = Integer.parseInt(first(props, "mail.port", "email.smtp.port", "587"));
+            username = first(props, "mail.username", "email.smtp.username", "");
+            password = first(props, "mail.password", "email.smtp.password", "");
+            fromName = first(props, "mail.from", "email.from.name", "Seva Tyres");
         } catch (Exception e) {
             LOG.warning("[EmailService] Could not load email config: " + e.getMessage());
         }
+    }
+
+    private static String first(Properties p, String k1, String k2, String def) {
+        String v = p.getProperty(k1);
+        if (v != null && !v.isBlank()) return v.trim();
+        v = p.getProperty(k2);
+        if (v != null && !v.isBlank()) return v.trim();
+        return def;
     }
 
     /**
@@ -80,9 +89,14 @@ public class EmailService {
         LOG.info("[EmailService] Credit reminder scheduler started (every 5 days).");
     }
 
+    /**
+     * Sends reminders for credits that are still open AND at least 15 days old.
+     * Runs every 5 days via the scheduler (see startReminderScheduler).
+     */
     private void sendCreditReminders(CustomerService customerService,
                                      TransactionService txnService) {
         try {
+            java.time.LocalDate cutoff = java.time.LocalDate.now().minusDays(15);
             List<Customer> customers = customerService.getAll();
             for (Customer customer : customers) {
                 if (customer.getEmail() == null || customer.getEmail().isBlank()) continue;
@@ -90,6 +104,7 @@ public class EmailService {
                 List<Transaction> credits = txnService.getCreditsByCustomer(customer.getId());
                 double outstanding = credits.stream()
                         .filter(Transaction::isOngoing)
+                        .filter(t -> t.getDate() != null && !t.getDate().isAfter(cutoff))
                         .mapToDouble(Transaction::getBalance)
                         .sum();
 

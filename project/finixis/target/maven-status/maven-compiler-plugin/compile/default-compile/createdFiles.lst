@@ -51,6 +51,7 @@ module-info.class
 com\finixis\db\SeedData.class
 com\sevatyres\repository\SaleTransactionRepository.class
 com\finixis\model\Role.class
+com\sevatyres\controller\Dialogs$11.class
 com\sevatyres\controller\CreditController$5.class
 com\finixis\repository\impl\JdbcCustomerRepository.class
 com\sevatyres\service\AlertService$1.class
@@ -61,6 +62,7 @@ com\finixis\controller\AccountsController$2.class
 com\finixis\controller\AccountsController.class
 com\sevatyres\service\AlertService.class
 com\sevatyres\controller\InventoryController$2.class
+com\sevatyres\controller\Dialogs$1ItemRow.class
 com\finixis\viewmodel\ThemeManager.class
 com\finixis\controller\CreditController$3.class
 com\sevatyres\controller\CustomerDetailController.class
@@ -79,6 +81,7 @@ com\sevatyres\db\DatabaseConfig.class
 com\finixis\controller\PageController.class
 com\sevatyres\controller\ReportsController.class
 com\sevatyres\repository\InventoryRepository.class
+com\sevatyres\model\SaleTransactionItem.class
 com\sevatyres\controller\UsersController$4.class
 com\finixis\controller\ShellController.class
 com\sevatyres\model\AlertConfig.class
@@ -90,6 +93,7 @@ com\sevatyres\controller\TransactionsController$2.class
 com\sevatyres\model\Transaction$Type.class
 com\sevatyres\repository\ReportRepository.class
 com\finixis\controller\Dialogs$2.class
+com\sevatyres\controller\Dialogs$10.class
 com\sevatyres\controller\CreditController.class
 com\sevatyres\controller\PageController.class
 com\finixis\controller\InventoryController$2.class

@@ -2,6 +2,7 @@ package com.sevatyres.repository.impl;
 
 import com.sevatyres.db.DatabaseConfig;
 import com.sevatyres.model.SaleTransaction;
+import com.sevatyres.model.SaleTransactionItem;
 import com.sevatyres.repository.SaleTransactionRepository;
 
 import java.sql.*;
@@ -97,6 +98,51 @@ public class JdbcSaleTransactionRepository implements SaleTransactionRepository 
             ps.setInt(1, id);
             ps.executeUpdate();
         } catch (SQLException e) { throw new RuntimeException(e); }
+    }
+
+    /** Inserts line items for a multi-item bill. Safe to call with empty list. */
+    public void saveItems(int saleId, List<SaleTransactionItem> items) {
+        if (items == null || items.isEmpty()) return;
+        String sql = "INSERT INTO Sale_Transaction_Item(sale_id,inventory_id,item_name,quantity,unit_price,line_total) VALUES(?,?,?,?,?,?)";
+        try (Connection con = DatabaseConfig.get();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            for (SaleTransactionItem item : items) {
+                ps.setInt(1, saleId);
+                if (item.getInventoryId() != null) ps.setInt(2, item.getInventoryId());
+                else ps.setNull(2, Types.INTEGER);
+                ps.setString(3, item.getItemName());
+                ps.setInt(4, item.getQuantity());
+                ps.setDouble(5, item.getUnitPrice());
+                ps.setDouble(6, item.getLineTotal());
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        } catch (SQLException e) { throw new RuntimeException(e); }
+    }
+
+    /** Returns all line items for a given sale (empty if single-item bill). */
+    public List<SaleTransactionItem> findItemsBySaleId(int saleId) {
+        List<SaleTransactionItem> list = new ArrayList<>();
+        String sql = "SELECT * FROM Sale_Transaction_Item WHERE sale_id=? ORDER BY sale_item_id";
+        try (Connection con = DatabaseConfig.get();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, saleId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    SaleTransactionItem it = new SaleTransactionItem();
+                    it.setSaleItemId(rs.getInt("sale_item_id"));
+                    it.setSaleId(rs.getInt("sale_id"));
+                    int invId = rs.getInt("inventory_id");
+                    if (!rs.wasNull()) it.setInventoryId(invId);
+                    it.setItemName(rs.getString("item_name"));
+                    it.setQuantity(rs.getInt("quantity"));
+                    it.setUnitPrice(rs.getDouble("unit_price"));
+                    it.setLineTotal(rs.getDouble("line_total"));
+                    list.add(it);
+                }
+            }
+        } catch (SQLException e) { throw new RuntimeException(e); }
+        return list;
     }
 
     // ─── Helpers ───────────────────────────────────────────────────────────────

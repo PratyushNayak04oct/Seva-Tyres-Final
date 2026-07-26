@@ -27,9 +27,12 @@ public class MockDataService {
     private int invoiceIdSeq  = 600;
 
     public MockDataService() {
-        seed();
+        // Mock/demo seed data disabled — start with a clean slate for testing.
+        // Keep a single default admin so the Users page is not empty.
+        users.add(new User(501, "Admin", "admin@sevatyres.com", "", Role.ADMIN, true));
     }
 
+    @SuppressWarnings("unused")
     private void seed() {
         // --- Staff users ---
         users.add(new User(501, "Rajan Mehta",   "rajan@sevatyres.com",    "+91 98765 43210", Role.ADMIN,    true));

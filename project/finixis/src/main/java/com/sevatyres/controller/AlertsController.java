@@ -392,7 +392,10 @@ public class AlertsController implements Initializable, PageController {
                 ? "Dear {name},\n\nThank you for choosing Seva Tyres. We wanted to remind you about our services.\n\nBest regards,\nSeva Tyres"
                 : existing.getMessageTemplate());
         msgArea.setWrapText(true);
-        msgArea.setPrefRowCount(6);
+        msgArea.setPrefRowCount(12);
+        msgArea.setPrefHeight(220);
+        msgArea.setMinHeight(180);
+        msgArea.getStyleClass().add("text-area");
         msgArea.setPromptText("Message template — use {name}, {phone}, {email} as placeholders");
 
         Label placeholderHint = new Label("Available placeholders: {name}  {phone}  {email}");
@@ -463,7 +466,9 @@ public class AlertsController implements Initializable, PageController {
         ScrollPane scroll = new ScrollPane(content);
         scroll.setFitToWidth(true);
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scroll.setMaxHeight(560);
+        scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scroll.setMaxHeight(620);
+        scroll.getStyleClass().add("scroll-pane");
 
         VBox outer = new VBox(scroll, btnRow);
         outer.getStyleClass().add("dialog-root");

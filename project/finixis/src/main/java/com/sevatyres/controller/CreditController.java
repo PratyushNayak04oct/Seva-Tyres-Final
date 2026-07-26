@@ -136,7 +136,8 @@ public class CreditController implements Initializable, PageController {
         c.setId(t.getId());
         c.setCustomerId(t.getCustomerId());
         c.setCustomerName(t.getCustomerName());
-        c.setAmount(t.getAmount());
+        // Show remaining balance for open credits; total for settled ones
+        c.setAmount(t.isOngoing() ? t.getBalance() : t.getAmount());
         c.setDescription(t.getDescription());
         c.setDateIssued(t.getDate());
         c.setDueDate(null);

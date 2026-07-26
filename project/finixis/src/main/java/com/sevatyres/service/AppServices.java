@@ -27,6 +27,7 @@ public final class AppServices {
         reports          = new ReportService();
         email            = new EmailService();
         alerts           = new AlertService();
+        alerts.ensureCreditPaymentCampaign();
         email.startReminderScheduler(customers, transactions);
     }
 

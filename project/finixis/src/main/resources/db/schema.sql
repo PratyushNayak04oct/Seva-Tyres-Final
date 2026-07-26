@@ -8,8 +8,7 @@ CREATE TABLE IF NOT EXISTS Customer (
     location      VARCHAR(300),
     contact       VARCHAR(30),
     email         VARCHAR(200),
-    creation_date DATE          NOT NULL DEFAULT CURRENT_DATE,
-    CONSTRAINT uq_customer_email UNIQUE (email)
+    creation_date DATE          NOT NULL DEFAULT CURRENT_DATE
 );
 
 -- Inventory: tyre shop products and services
@@ -64,7 +63,7 @@ CREATE TABLE IF NOT EXISTS Sale_Transaction (
     sale_date            DATE          NOT NULL DEFAULT CURRENT_DATE,
     particulars          VARCHAR(500)  NOT NULL,
     brand                VARCHAR(200),
-    quantity             INTEGER       NOT NULL DEFAULT 1 CHECK (quantity > 0),
+    quantity             INTEGER       NOT NULL DEFAULT 0 CHECK (quantity >= 0),
     unit_price           DECIMAL(15,2) NOT NULL DEFAULT 0 CHECK (unit_price >= 0),
     inventory_item_id    INTEGER,
     -- Payment breakdown (all amounts in INR, default 0)
@@ -85,6 +84,19 @@ CREATE TABLE IF NOT EXISTS Sale_Transaction (
     created_at           TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_st_customer FOREIGN KEY (customer_id) REFERENCES Customer(customer_id) ON DELETE SET NULL,
     CONSTRAINT fk_st_inventory FOREIGN KEY (inventory_item_id) REFERENCES Inventory(item_id) ON DELETE SET NULL
+);
+
+-- Sale_Transaction_Item: line items for a multi-product sale bill
+CREATE TABLE IF NOT EXISTS Sale_Transaction_Item (
+    sale_item_id   INTEGER       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    sale_id        INTEGER       NOT NULL,
+    inventory_id   INTEGER,
+    item_name      VARCHAR(200)  NOT NULL,
+    quantity       INTEGER       NOT NULL DEFAULT 1 CHECK (quantity >= 0),
+    unit_price     DECIMAL(15,2) NOT NULL DEFAULT 0 CHECK (unit_price >= 0),
+    line_total     DECIMAL(15,2) NOT NULL DEFAULT 0,
+    CONSTRAINT fk_sti_sale      FOREIGN KEY (sale_id)     REFERENCES Sale_Transaction(sale_id) ON DELETE CASCADE,
+    CONSTRAINT fk_sti_inventory FOREIGN KEY (inventory_id) REFERENCES Inventory(item_id)       ON DELETE SET NULL
 );
 
 -- Generated_Report: PDF or Excel files produced from the Transactions or Reports page
@@ -132,3 +144,4 @@ CREATE INDEX IF NOT EXISTS idx_rpt_date     ON Generated_Report(creation_date);
 CREATE INDEX IF NOT EXISTS idx_st_date      ON Sale_Transaction(sale_date);
 CREATE INDEX IF NOT EXISTS idx_st_customer  ON Sale_Transaction(customer_id);
 CREATE INDEX IF NOT EXISTS idx_st_bill      ON Sale_Transaction(bill_no);
+CREATE INDEX IF NOT EXISTS idx_sti_sale     ON Sale_Transaction_Item(sale_id);

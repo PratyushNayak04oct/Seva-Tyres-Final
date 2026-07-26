@@ -77,7 +77,22 @@ public final class DatabaseConfig {
             // H2: ALTER COLUMN syntax; PostgreSQL: SET DEFAULT '' then OK
             "ALTER TABLE Sale_Transaction ALTER COLUMN bill_no SET DEFAULT ''",
             "ALTER TABLE Sale_Transaction ALTER COLUMN bill_no VARCHAR(20)",
-            "ALTER TABLE Alert_Config ADD COLUMN duration_days INTEGER NOT NULL DEFAULT 30"
+            "ALTER TABLE Alert_Config ADD COLUMN duration_days INTEGER NOT NULL DEFAULT 30",
+            // Sale_Transaction_Item: multi-item line items per bill
+            "CREATE TABLE IF NOT EXISTS Sale_Transaction_Item (" +
+                "sale_item_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY," +
+                "sale_id INTEGER NOT NULL," +
+                "inventory_id INTEGER," +
+                "item_name VARCHAR(200) NOT NULL," +
+                "quantity INTEGER NOT NULL DEFAULT 1," +
+                "unit_price DECIMAL(15,2) NOT NULL DEFAULT 0," +
+                "line_total DECIMAL(15,2) NOT NULL DEFAULT 0," +
+                "CONSTRAINT fk_sti_sale FOREIGN KEY (sale_id) REFERENCES Sale_Transaction(sale_id) ON DELETE CASCADE)",
+            // Relax quantity constraint to allow 0
+            "ALTER TABLE Sale_Transaction ALTER COLUMN quantity SET DEFAULT 0",
+            // Remove email unique constraint (allow customers without email)
+            "ALTER TABLE Customer DROP CONSTRAINT IF EXISTS uq_customer_email",
+            "ALTER TABLE Customer DROP CONSTRAINT uq_customer_email"
         };
         try (Connection conn = get(); Statement stmt = conn.createStatement()) {
             for (String sql : migrations) {
