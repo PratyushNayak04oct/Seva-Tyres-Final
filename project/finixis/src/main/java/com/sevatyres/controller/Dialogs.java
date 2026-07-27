@@ -117,6 +117,54 @@ public final class Dialogs {
         presentDialog(stage, content, btnRow);
     }
 
+    public static void showEditCustomer(Customer customer, Consumer<Customer> onSaved) {
+        Stage stage = buildDialogStage("Edit Customer");
+
+        VBox content = contentVBox();
+        Label title = dialogTitle("Edit Customer");
+        Label sub   = dialogSub("Update details for \"" + customer.getName() + "\".");
+
+        TextField nameField  = styledField("Full name");
+        nameField.setText(nvl(customer.getName()));
+        TextField phoneField = styledField("Phone number");
+        phoneField.setText(nvl(customer.getPhone()));
+        TextField emailField = styledField("Email address");
+        emailField.setText(nvl(customer.getEmail()));
+        TextField addrField  = styledField("Address");
+        addrField.setText(nvl(customer.getAddress()));
+
+        VBox form = new VBox(14,
+                labeledField("Name *", nameField),
+                labeledField("Phone", phoneField),
+                labeledField("Email", emailField),
+                labeledField("Address", addrField));
+
+        Label err = errLabel();
+        content.getChildren().addAll(new VBox(4, title, sub), new Separator(), form, err);
+
+        Button cancelBtn  = new Button("Cancel");
+        cancelBtn.getStyleClass().addAll("btn", "btn-secondary");
+        Button confirmBtn = new Button("Save Changes");
+        confirmBtn.getStyleClass().add("btn");
+
+        cancelBtn.setOnAction(e -> stage.close());
+        confirmBtn.setOnAction(e -> {
+            String name = nameField.getText().trim();
+            if (name.isEmpty()) { err.setText("Name is required."); return; }
+            customer.setName(name);
+            customer.setPhone(phoneField.getText().trim());
+            customer.setEmail(emailField.getText().trim());
+            customer.setAddress(addrField.getText().trim());
+            Customer updated = AppServices.customers().updateCustomer(customer);
+            stage.close();
+            if (onSaved != null) onSaved.accept(updated);
+        });
+
+        presentDialog(stage, content, buttonRow(cancelBtn, confirmBtn));
+    }
+
+    private static String nvl(String s) { return s != null ? s : ""; }
+
     // â”€â”€â”€ Add Debit dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public static void showAddDebit(Customer customer, Runnable onConfirm) {
@@ -354,17 +402,17 @@ public final class Dialogs {
     // â”€â”€â”€ New Sale Transaction dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
-        Stage stage = buildDialogStage("New Transaction");
+        Stage stage = buildDialogStage("New Transaction", 820, 980);
         VBox content = contentVBox();
+        content.setPrefWidth(860);
         Label title = dialogTitle("New Transaction");
-        Label sub   = dialogSub("Scan a barcode into the product field, or pick from inventory. Quantity starts at 0.");
+        Label sub   = dialogSub("Scan a barcode into the product field, or pick from inventory. Quantity starts at 0. Brand comes from each item.");
 
         DatePicker datePicker = new DatePicker(LocalDate.now());
         datePicker.getStyleClass().add("date-picker");
         datePicker.setMaxWidth(Double.MAX_VALUE);
 
-        TextField billNoField = styledField("Bill number (optional â€” auto-generated if blank)");
-        TextField brandField  = styledField("Brand (optional)");
+        TextField billNoField = styledField("Bill number (optional — auto-generated if blank)");
 
         List<InventoryItem> inventoryItems = AppServices.inventory().getAll();
 
@@ -385,13 +433,14 @@ public final class Dialogs {
         class ItemRow {
             final TextField productField = styledField("Product name or scan barcode\u2026");
             final ComboBox<InventoryItem> combo = new ComboBox<>();
+            final TextField brandField = styledField("Brand (optional)");
             final TextField qtyField = styledField("0");
             final TextField unitPriceField = styledField("0.00");
             final Label lineTotalLbl = new Label("\u20b90.00");
             final Label stockLbl = new Label();
             final Button removeBtn = new Button("\u2715");
             InventoryItem selected = null;
-            HBox rowNode;
+            VBox rowNode;
         }
         List<ItemRow> rows = new ArrayList<>();
         VBox itemsBox = new VBox(10);
@@ -444,21 +493,25 @@ public final class Dialogs {
             r.combo.getItems().addAll(inventoryItems);
             r.combo.setPromptText("Select from inventory\u2026");
             r.combo.getStyleClass().add("combo");
-            r.combo.setPrefWidth(200);
+            r.combo.setMaxWidth(Double.MAX_VALUE);
             r.combo.setCellFactory(lv -> new ListCell<>() {
                 @Override protected void updateItem(InventoryItem item, boolean empty) {
                     super.updateItem(item, empty);
                     if (empty || item == null) { setText(null); return; }
                     String stock = item.getQuantity() == 0 ? "Out of Stock" : "Stock: " + item.getQuantity();
-                    setText(item.getName() + "  [" + stock + "]");
+                    String brand = (item.getBrand() != null && !item.getBrand().isBlank())
+                            ? " · " + item.getBrand() : "";
+                    setText(item.getName() + brand + "  [" + stock + "]");
                 }
             });
             r.combo.setButtonCell(r.combo.getCellFactory().call(null));
+            r.brandField.setPrefWidth(160);
 
             Runnable applyItem = () -> {
                 if (r.selected == null) return;
                 r.productField.setText(r.selected.getName());
                 r.unitPriceField.setText(String.format("%.2f", r.selected.getUnitPrice()));
+                r.brandField.setText(r.selected.getBrand() != null ? r.selected.getBrand() : "");
                 updateTotalsRef[0].run();
             };
 
@@ -494,19 +547,22 @@ public final class Dialogs {
             Label qtyLbl = new Label("Qty:");
             Label upLbl  = new Label("Unit \u20b9:");
             Label ltLbl  = new Label("Line:");
+            Label brandLbl = new Label("Brand:");
             upLbl.setStyle("-fx-font-size:11px; -fx-text-fill: -text-muted;");
             ltLbl.setStyle("-fx-font-size:11px; -fx-text-fill: -text-muted;");
+            brandLbl.setStyle("-fx-font-size:11px; -fx-text-fill: -text-muted;");
 
-            HBox priceBox = new HBox(6, upLbl, r.unitPriceField, ltLbl, r.lineTotalLbl);
-            priceBox.setAlignment(Pos.CENTER_LEFT);
-
-            VBox left = new VBox(4, r.productField, r.combo);
+            HBox productRow = new HBox(10, r.productField, r.combo);
             HBox.setHgrow(r.productField, Priority.ALWAYS);
-            HBox.setHgrow(left, Priority.ALWAYS);
+            HBox.setHgrow(r.combo, Priority.ALWAYS);
+            productRow.setAlignment(Pos.CENTER_LEFT);
 
-            r.rowNode = new HBox(10, left, qtyLbl, r.qtyField, priceBox, r.stockLbl, r.removeBtn);
-            r.rowNode.setAlignment(Pos.CENTER_LEFT);
-            r.rowNode.setStyle("-fx-background-color: -surface-2; -fx-padding: 10; -fx-background-radius: 8;");
+            HBox detailRow = new HBox(12, brandLbl, r.brandField, qtyLbl, r.qtyField,
+                    upLbl, r.unitPriceField, ltLbl, r.lineTotalLbl, r.stockLbl, r.removeBtn);
+            detailRow.setAlignment(Pos.CENTER_LEFT);
+
+            r.rowNode = new VBox(8, productRow, detailRow);
+            r.rowNode.setStyle("-fx-background-color: -surface-2; -fx-padding: 12; -fx-background-radius: 8;");
 
             rows.add(r);
             itemsBox.getChildren().add(r.rowNode);
@@ -596,7 +652,6 @@ public final class Dialogs {
                 new VBox(4, title, sub), new Separator(),
                 labeledField("Date", datePicker),
                 labeledField("Bill No", billNoField),
-                labeledField("Brand", brandField),
                 new Separator(),
                 itemsHeader, itemsBox, addMoreBtn,
                 new Separator(),
@@ -661,7 +716,6 @@ public final class Dialogs {
             SaleTransaction tx = new SaleTransaction();
             tx.setBillNo(billNoField.getText().trim());
             tx.setSaleDate(datePicker.getValue() != null ? datePicker.getValue() : LocalDate.now());
-            tx.setBrand(brandField.getText().trim());
             tx.setPhonePe(parseDouble(phonePeField));
             tx.setAccountTransfer(parseDouble(acTransferField));
             tx.setCardSwipe(parseDouble(cardSwipeField));
@@ -675,6 +729,14 @@ public final class Dialogs {
             tx.setQuantity(first.getQuantity());
             tx.setUnitPrice(first.getUnitPrice());
             tx.setInventoryItemId(first.getInventoryId());
+            // Brand from first item row that produced a line item
+            String saleBrand = "";
+            for (ItemRow r : rows) {
+                if (r.productField.getText().trim().isEmpty() && r.selected == null) continue;
+                saleBrand = r.brandField.getText().trim();
+                break;
+            }
+            tx.setBrand(saleBrand);
 
             Customer selCust = existingCustCombo.getValue();
             if (selCust != null) {
@@ -695,7 +757,7 @@ public final class Dialogs {
             if (onSaved != null) onSaved.accept(saved);
         });
 
-        presentDialog(stage, content, buttonRow(cancelBtn, saveBtn));
+        presentDialog(stage, content, buttonRow(cancelBtn, saveBtn), 860);
     }
 
     // â”€â”€â”€ View Sale Transaction dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -984,6 +1046,7 @@ public final class Dialogs {
         Label sub   = dialogSub("Enter details. Attach a barcode so items can be scanned in transactions.");
 
         TextField nameField    = styledField("Item name");
+        TextField brandField   = styledField("Brand (optional)");
         TextField qtyField     = styledField("0");
         TextField priceField   = styledField("0.00");
         TextField barcodeField = styledField("Barcode (scan or type, optional)");
@@ -992,6 +1055,7 @@ public final class Dialogs {
 
         VBox form = new VBox(14,
                 labeledField("Name *", nameField),
+                labeledField("Brand", brandField),
                 labeledField("Quantity", qtyField),
                 labeledField("Unit Price (\u20b9)", priceField),
                 new VBox(4, labeledField("Barcode", barcodeField), barcodeHint));
@@ -1017,6 +1081,7 @@ public final class Dialogs {
 
             InventoryItem item = new InventoryItem();
             item.setName(name);
+            item.setBrand(brandField.getText().trim());
             item.setQuantity(qty);
             item.setUnitPrice(price);
             String bc = barcodeField.getText().trim();
@@ -1050,6 +1115,8 @@ public final class Dialogs {
         Label sub   = dialogSub("Update the details for \"" + item.getName() + "\".");
 
         TextField nameField    = styledField("Item name");  nameField.setText(item.getName());
+        TextField brandField   = styledField("Brand (optional)");
+        if (item.getBrand() != null) brandField.setText(item.getBrand());
         TextField qtyField     = styledField("0");          qtyField.setText(String.valueOf(item.getQuantity()));
         TextField priceField   = styledField("0.00");       priceField.setText(String.format("%.2f", item.getUnitPrice()));
         TextField barcodeField = styledField("Barcode (scan or type, optional)");
@@ -1057,6 +1124,7 @@ public final class Dialogs {
 
         VBox form = new VBox(14,
                 labeledField("Name *", nameField),
+                labeledField("Brand", brandField),
                 labeledField("Quantity", qtyField),
                 labeledField("Unit Price (\u20b9)", priceField),
                 labeledField("Barcode", barcodeField));
@@ -1080,6 +1148,7 @@ public final class Dialogs {
             try { price = Double.parseDouble(priceField.getText().trim()); if (price < 0) throw new NumberFormatException(); }
             catch (NumberFormatException ex) { err.setText("Unit price must be a non-negative number."); return; }
             item.setName(name);
+            item.setBrand(brandField.getText().trim());
             item.setQuantity(qty);
             item.setUnitPrice(price);
             String bc = barcodeField.getText().trim();
@@ -1312,12 +1381,16 @@ public final class Dialogs {
     // â”€â”€â”€ Layout helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private static void presentDialog(Stage stage, VBox contentVBox, HBox buttonRow) {
-        contentVBox.setPrefWidth(540);
+        presentDialog(stage, contentVBox, buttonRow, 540);
+    }
+
+    private static void presentDialog(Stage stage, VBox contentVBox, HBox buttonRow, double contentWidth) {
+        contentVBox.setPrefWidth(contentWidth);
         ScrollPane scroll = new ScrollPane(contentVBox);
         scroll.setFitToWidth(true);
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        scroll.setMaxHeight(580);
+        scroll.setMaxHeight(640);
         scroll.getStyleClass().add("scroll-pane");
         VBox outer = new VBox(scroll, buttonRow);
         outer.getStyleClass().add("dialog-root");
@@ -1331,12 +1404,16 @@ public final class Dialogs {
     }
 
     private static Stage buildDialogStage(String title) {
+        return buildDialogStage(title, 540, 740);
+    }
+
+    private static Stage buildDialogStage(String title, double minWidth, double maxWidth) {
         Stage stage = new Stage();
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.initOwner(App.getScene().getWindow());
         stage.setTitle(title);
-        stage.setMinWidth(540);
-        stage.setMaxWidth(740);
+        stage.setMinWidth(minWidth);
+        stage.setMaxWidth(maxWidth);
         stage.setResizable(true);
         return stage;
     }

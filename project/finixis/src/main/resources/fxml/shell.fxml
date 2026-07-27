@@ -14,10 +14,10 @@
         <FontIcon iconLiteral="fas-bars" styleClass="topbar-icon" onMouseClicked="#toggleMenu"/>
         <Label text="Seva Tyres" styleClass="brand"/>
         <Region HBox.hgrow="ALWAYS"/>
-        <Button fx:id="themeToggleBtn" onAction="#onToggleTheme" styleClass="btn,btn-secondary,icon-btn" prefWidth="110"/>
-        <Button text="Account" styleClass="nav-btn" onAction="#goAccount">
-            <graphic><FontIcon iconLiteral="fas-user-circle"/></graphic>
+        <Button fx:id="refreshBtn" text="Refresh" onAction="#onRefresh" styleClass="btn,btn-secondary">
+            <graphic><FontIcon iconLiteral="fas-sync-alt"/></graphic>
         </Button>
+        <Button fx:id="themeToggleBtn" onAction="#onToggleTheme" styleClass="btn,btn-secondary,icon-btn" prefWidth="110"/>
     </HBox>
 
     <HBox styleClass="body" spacing="0" VBox.vgrow="ALWAYS">
@@ -28,7 +28,6 @@
             <Button fx:id="navHome" text="Home" styleClass="menu-item,menu-active" onAction="#goHome" maxWidth="1.7976931348623157E308" alignment="BASELINE_LEFT">
                 <graphic><FontIcon iconLiteral="fas-home"/></graphic>
             </Button>
-            <!-- Task 3: Transactions moved directly under Home, before Accounts -->
             <Button fx:id="navTransactions" text="Transactions" styleClass="menu-item" onAction="#goTransactions" maxWidth="1.7976931348623157E308" alignment="BASELINE_LEFT">
                 <graphic><FontIcon iconLiteral="fas-receipt"/></graphic>
             </Button>
@@ -46,11 +45,6 @@
             </Button>
             <Button fx:id="navAlerts" text="Alerts" styleClass="menu-item" onAction="#goAlerts" maxWidth="1.7976931348623157E308" alignment="BASELINE_LEFT">
                 <graphic><FontIcon iconLiteral="fas-bell"/></graphic>
-            </Button>
-            <Region VBox.vgrow="ALWAYS"/>
-            <Label text="ACCOUNT" styleClass="menu-section"/>
-            <Button text="Sign Out" styleClass="menu-item,menu-danger" onAction="#onSignOut" maxWidth="1.7976931348623157E308" alignment="BASELINE_LEFT">
-                <graphic><FontIcon iconLiteral="fas-sign-out-alt"/></graphic>
             </Button>
         </VBox>
 

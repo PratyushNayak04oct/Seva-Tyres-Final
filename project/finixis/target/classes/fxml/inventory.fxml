@@ -26,9 +26,9 @@
 
     <TableView fx:id="table" VBox.vgrow="ALWAYS">
         <columns>
-            <TableColumn fx:id="nameCol" text="Item" prefWidth="200"/>
-            <TableColumn fx:id="skuCol" text="SKU" prefWidth="120"/>
-            <TableColumn fx:id="catCol" text="Category" prefWidth="160"/>
+            <TableColumn fx:id="nameCol" text="Item" prefWidth="220"/>
+            <TableColumn fx:id="skuCol" text="Brand" prefWidth="140"/>
+            <TableColumn fx:id="catCol" text="Category" prefWidth="140"/>
             <TableColumn fx:id="qtyCol" text="Qty" prefWidth="80"/>
             <TableColumn fx:id="priceCol" text="Unit Price" prefWidth="110"/>
             <TableColumn fx:id="stockCol" text="Status" prefWidth="120"/>

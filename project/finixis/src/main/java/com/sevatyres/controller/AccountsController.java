@@ -61,18 +61,29 @@ public class AccountsController implements Initializable, PageController {
         });
 
         actionCol.setCellFactory(col -> new TableCell<>() {
+            private final Button editBtn = new Button("Edit");
             private final Button openBtn = new Button("Open");
             {
+                editBtn.getStyleClass().addAll("btn", "btn-secondary");
+                editBtn.setPadding(new javafx.geometry.Insets(6, 12, 6, 12));
+                editBtn.setMinWidth(70);
+                editBtn.setOnAction(e -> {
+                    Customer c = getTableView().getItems().get(getIndex());
+                    Dialogs.showEditCustomer(c, updated -> {
+                        allCustomers = customerService.getAll();
+                        onSearch();
+                    });
+                });
                 openBtn.getStyleClass().addAll("btn", "btn-secondary");
                 openBtn.setPadding(new javafx.geometry.Insets(6, 12, 6, 12));
-                openBtn.setMinWidth(80);
+                openBtn.setMinWidth(70);
                 openBtn.setOnAction(e -> App.getShell().openCustomer(
                         getTableView().getItems().get(getIndex()).getId()));
             }
             @Override protected void updateItem(Customer c, boolean empty) {
                 super.updateItem(c, empty);
                 if (empty || c == null) { setGraphic(null); return; }
-                javafx.scene.layout.HBox box = new javafx.scene.layout.HBox(openBtn);
+                javafx.scene.layout.HBox box = new javafx.scene.layout.HBox(8, editBtn, openBtn);
                 box.setAlignment(javafx.geometry.Pos.CENTER);
                 box.setPadding(new javafx.geometry.Insets(6, 8, 6, 8));
                 setGraphic(box);

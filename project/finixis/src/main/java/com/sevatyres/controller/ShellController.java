@@ -20,8 +20,11 @@ public class ShellController implements Initializable {
     @FXML private StackPane contentHost;
     @FXML private Button navHome, navTransactions, navAccounts, navCredit, navInventory, navReports, navAlerts;
     @FXML private Button themeToggleBtn;
+    @FXML private Button refreshBtn;
 
     private Button currentNav;
+    private String currentPage = "home";
+    private Integer openCustomerId = null;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -43,8 +46,20 @@ public class ShellController implements Initializable {
         UiUtil.toast(App.getRoot(), ThemeManager.isDark() ? "Dark mode on" : "Light mode on");
     }
 
+    /** Reloads the current page (or open customer detail) so DB changes appear immediately. */
+    @FXML private void onRefresh() {
+        if (openCustomerId != null) {
+            openCustomer(openCustomerId);
+        } else {
+            loadPage(currentPage);
+        }
+        UiUtil.toast(App.getRoot(), "Refreshed");
+    }
+
     private void loadPage(String name) {
         try {
+            currentPage = name;
+            openCustomerId = null;
             FXMLLoader loader = new FXMLLoader(App.class.getResource("/fxml/" + name + ".fxml"));
             Parent view = loader.load();
             contentHost.getChildren().setAll(view);
@@ -55,7 +70,6 @@ public class ShellController implements Initializable {
 
     @FXML private void toggleMenu() { sideMenu.setVisible(!sideMenu.isVisible()); }
 
-    @FXML private void goAccount()       { setActiveNav(null);             loadPage("account"); }
     @FXML private void goHome()          { setActiveNav(navHome);          loadPage("home"); }
     @FXML private void goTransactions()  { setActiveNav(navTransactions);  loadPage("transactions"); }
     @FXML private void goAccounts()      { setActiveNav(navAccounts);      loadPage("accounts"); }
@@ -63,8 +77,6 @@ public class ShellController implements Initializable {
     @FXML private void goInventory()     { setActiveNav(navInventory);     loadPage("inventory"); }
     @FXML private void goReports()       { setActiveNav(navReports);       loadPage("reports"); }
     @FXML private void goAlerts()        { setActiveNav(navAlerts);        loadPage("alerts"); }
-
-    @FXML private void onSignOut() { Dialogs.signOut(contentHost); }
 
     private void setActiveNav(Button nav) {
         if (currentNav != null) currentNav.getStyleClass().remove("menu-active");
@@ -90,6 +102,8 @@ public class ShellController implements Initializable {
     public void openCustomer(int customerId) {
         setActiveNav(navAccounts);
         try {
+            currentPage = "customer_detail";
+            openCustomerId = customerId;
             FXMLLoader loader = new FXMLLoader(App.class.getResource("/fxml/customer_detail.fxml"));
             Parent view = loader.load();
             contentHost.getChildren().setAll(view);

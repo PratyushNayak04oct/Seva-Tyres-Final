@@ -51,6 +51,7 @@ public class SaleTransactionService {
         // If multi-item, override total from items list
         if (!items.isEmpty()) {
             double itemsTotal = items.stream().mapToDouble(SaleTransactionItem::getLineTotal).sum();
+            int totalQty = items.stream().mapToInt(SaleTransactionItem::getQuantity).sum();
             tx.setTotal(itemsTotal);
             double paid = tx.getPhonePe() + tx.getAccountTransfer() + tx.getCardSwipe()
                     + tx.getBajajFinance() + tx.getCash() + tx.getCheque();
@@ -64,8 +65,14 @@ public class SaleTransactionService {
                 }
                 tx.setParticulars(sb.toString());
             }
-            tx.setQuantity(0);
-            tx.setUnitPrice(0);
+            // Header qty = sum of line qtys (must be > 0 for DB check on older DBs)
+            tx.setQuantity(Math.max(1, totalQty));
+            // Keep first item unit price for display when single-item; else 0 (total is authoritative)
+            if (tx.getUnitPrice() <= 0 && items.size() == 1) {
+                tx.setUnitPrice(items.get(0).getUnitPrice());
+            } else if (items.size() > 1) {
+                tx.setUnitPrice(0);
+            }
         } else {
             tx.computeTotal();
         }

@@ -77,10 +77,38 @@ public class TransactionService {
         return repo.saveDebit(tx);
     }
 
-    public void markSettled(int transactionId) { repo.markSettled(transactionId); }
+    public void markSettled(int transactionId) {
+        int customerId = findCreditCustomerId(transactionId);
+        repo.markSettled(transactionId);
+        clearAlertsIfCustomerFullySettled(customerId);
+    }
 
     public void recordPartialPayment(int transactionId, double amount, LocalDate date) {
+        int customerId = findCreditCustomerId(transactionId);
         repo.partialPayment(transactionId, amount, date);
+        clearAlertsIfCustomerFullySettled(customerId);
+    }
+
+    private int findCreditCustomerId(int transactionId) {
+        return repo.findAllCredits().stream()
+                .filter(t -> t.getId() == transactionId)
+                .map(Transaction::getCustomerId)
+                .findFirst()
+                .orElse(0);
+    }
+
+    /** When the customer has no remaining open credits, clear their alert history. */
+    private void clearAlertsIfCustomerFullySettled(int customerId) {
+        if (customerId <= 0) return;
+        boolean stillOpen = repo.findCreditsByCustomer(customerId).stream()
+                .anyMatch(Transaction::isOngoing);
+        if (!stillOpen) {
+            try {
+                new AlertService().clearAlertsForCustomer(customerId);
+            } catch (Exception ignored) {
+                // best-effort cleanup
+            }
+        }
     }
 
     // ---- Summary stats ----

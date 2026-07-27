@@ -28,7 +28,7 @@
             <TableColumn fx:id="contactCol" text="Contact" prefWidth="240"/>
             <TableColumn fx:id="sinceCol" text="Customer Since" prefWidth="140"/>
             <TableColumn fx:id="balanceCol" text="Balance" prefWidth="140"/>
-            <TableColumn fx:id="actionCol" text="Actions" minWidth="120" prefWidth="140" sortable="false"/>
+            <TableColumn fx:id="actionCol" text="Actions" minWidth="200" prefWidth="220" sortable="false"/>
         </columns>
     </TableView>
 </VBox>

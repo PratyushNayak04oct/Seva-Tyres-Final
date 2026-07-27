@@ -240,6 +240,22 @@ public class AlertService {
     public boolean isEmailConfigured() { return emailEnabled && !smtpUser.isBlank(); }
 
     /**
+     * Clears alert history for a customer once their credit is settled,
+     * so they are no longer shown as pending alert recipients in the log.
+     */
+    public void clearAlertsForCustomer(int customerId) {
+        try (Connection con = DatabaseConfig.get();
+             PreparedStatement ps = con.prepareStatement(
+                     "DELETE FROM Alert_Log WHERE customer_id=?")) {
+            ps.setInt(1, customerId);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            LOG.warning("[AlertService] Could not clear alerts for customer "
+                    + customerId + ": " + e.getMessage());
+        }
+    }
+
+    /**
      * Ensures a system "Credit Payment Reminder" campaign exists.
      * Sends every 5 days; campaign duration 365 days.
      * Actual start delay of 15 days after the transaction date is enforced

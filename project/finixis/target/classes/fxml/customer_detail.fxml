@@ -55,6 +55,9 @@
 
         <!-- ── Primary actions row ── -->
         <HBox spacing="12" alignment="CENTER_LEFT">
+            <Button fx:id="editCustomerBtn" text="Edit Account" styleClass="btn,btn-secondary" onAction="#onEditCustomer">
+                <graphic><FontIcon iconLiteral="fas-user-edit"/></graphic>
+            </Button>
             <Button fx:id="addDebitBtn" text="Add Debit" styleClass="btn,btn-secondary" onAction="#onAddDebit">
                 <graphic><FontIcon iconLiteral="fas-minus-circle"/></graphic>
             </Button>

@@ -13,7 +13,7 @@ public class JdbcInventoryRepository implements InventoryRepository {
 
     private static final int REORDER_LEVEL = 10;
     private static final String SELECT_ALL =
-            "SELECT item_id,item_name,available_quantity,unit_price,barcode FROM Inventory";
+            "SELECT item_id,item_name,brand,available_quantity,unit_price,barcode FROM Inventory";
 
     @Override
     public List<InventoryItem> findAll() {
@@ -72,13 +72,14 @@ public class JdbcInventoryRepository implements InventoryRepository {
     }
 
     private InventoryItem insert(InventoryItem item) {
-        String sql = "INSERT INTO Inventory(item_name,available_quantity,unit_price,barcode) VALUES(?,?,?,?)";
+        String sql = "INSERT INTO Inventory(item_name,brand,available_quantity,unit_price,barcode) VALUES(?,?,?,?,?)";
         try (Connection con = DatabaseConfig.get();
              PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, item.getName());
-            ps.setInt(2, item.getQuantity());
-            ps.setDouble(3, item.getUnitPrice());
-            ps.setString(4, item.getBarcode());
+            ps.setString(2, blankToNull(item.getBrand()));
+            ps.setInt(3, item.getQuantity());
+            ps.setDouble(4, item.getUnitPrice());
+            ps.setString(5, item.getBarcode());
             ps.executeUpdate();
             try (ResultSet k = ps.getGeneratedKeys()) { k.next(); item.setId(k.getInt(1)); }
         } catch (SQLException e) {
@@ -88,18 +89,23 @@ public class JdbcInventoryRepository implements InventoryRepository {
     }
 
     private void update(InventoryItem item) {
-        String sql = "UPDATE Inventory SET item_name=?,available_quantity=?,unit_price=?,barcode=? WHERE item_id=?";
+        String sql = "UPDATE Inventory SET item_name=?,brand=?,available_quantity=?,unit_price=?,barcode=? WHERE item_id=?";
         try (Connection con = DatabaseConfig.get();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, item.getName());
-            ps.setInt(2, item.getQuantity());
-            ps.setDouble(3, item.getUnitPrice());
-            ps.setString(4, item.getBarcode());
-            ps.setInt(5, item.getId());
+            ps.setString(2, blankToNull(item.getBrand()));
+            ps.setInt(3, item.getQuantity());
+            ps.setDouble(4, item.getUnitPrice());
+            ps.setString(5, item.getBarcode());
+            ps.setInt(6, item.getId());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw wrapUniqueName(e, item.getName());
         }
+    }
+
+    private static String blankToNull(String s) {
+        return (s == null || s.isBlank()) ? null : s.trim();
     }
 
     private static RuntimeException wrapUniqueName(SQLException e, String name) {
@@ -135,6 +141,7 @@ public class JdbcInventoryRepository implements InventoryRepository {
         InventoryItem i = new InventoryItem();
         i.setId(rs.getInt("item_id"));
         i.setName(rs.getString("item_name"));
+        try { i.setBrand(rs.getString("brand")); } catch (SQLException ignored) {}
         i.setQuantity(rs.getInt("available_quantity"));
         i.setUnitPrice(rs.getDouble("unit_price"));
         i.setReorderLevel(REORDER_LEVEL);

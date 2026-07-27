@@ -72,6 +72,7 @@ public final class DatabaseConfig {
     private static void runMigrations() {
         String[] migrations = {
             "ALTER TABLE Inventory ADD COLUMN barcode VARCHAR(100)",
+            "ALTER TABLE Inventory ADD COLUMN brand VARCHAR(200)",
             "ALTER TABLE Sale_Transaction ADD COLUMN unit_price DECIMAL(15,2) NOT NULL DEFAULT 0",
             "ALTER TABLE Sale_Transaction ADD COLUMN inventory_item_id INTEGER",
             // H2: ALTER COLUMN syntax; PostgreSQL: SET DEFAULT '' then OK
@@ -88,8 +89,12 @@ public final class DatabaseConfig {
                 "unit_price DECIMAL(15,2) NOT NULL DEFAULT 0," +
                 "line_total DECIMAL(15,2) NOT NULL DEFAULT 0," +
                 "CONSTRAINT fk_sti_sale FOREIGN KEY (sale_id) REFERENCES Sale_Transaction(sale_id) ON DELETE CASCADE)",
-            // Relax quantity constraint to allow 0
+            // Relax quantity constraint to allow 0 (schema.sql already uses >= 0 for new DBs)
             "ALTER TABLE Sale_Transaction ALTER COLUMN quantity SET DEFAULT 0",
+            "ALTER TABLE Sale_Transaction DROP CONSTRAINT IF EXISTS sale_transaction_quantity_check",
+            "ALTER TABLE Sale_Transaction ADD CONSTRAINT sale_transaction_quantity_check CHECK (quantity >= 0)",
+            // H2 may name the check differently
+            "ALTER TABLE Sale_Transaction DROP CONSTRAINT IF EXISTS CONSTRAINT_F",
             // Remove email unique constraint (allow customers without email)
             "ALTER TABLE Customer DROP CONSTRAINT IF EXISTS uq_customer_email",
             "ALTER TABLE Customer DROP CONSTRAINT uq_customer_email"

@@ -29,7 +29,7 @@ public class CustomerDetailController implements Initializable, PageController {
     @FXML private Label avatar, nameLabel, emailLabel, phoneLabel, sinceLabel;
     @FXML private Label balanceLabel, balanceNote;
     @FXML private Label chipTxns, chipLast, chipOngoing;
-    @FXML private Button addDebitBtn, recordPaymentBtn, deleteBtn;
+    @FXML private Button editCustomerBtn, addDebitBtn, recordPaymentBtn, deleteBtn;
     @FXML private ComboBox<String> dateRangeCombo;
     @FXML private DatePicker fromDate, toDate;
     @FXML private VBox historyBox;
@@ -231,6 +231,15 @@ public class CustomerDetailController implements Initializable, PageController {
 
     @FXML private void onDateRange() { renderHistory(); }
     @FXML private void onBack() { App.getShell().navigate("accounts"); }
+
+    @FXML private void onEditCustomer() {
+        if (customer == null) return;
+        Dialogs.showEditCustomer(customer, updated -> {
+            customer = updated;
+            loadCustomer(customer.getId());
+            UiUtil.toast(App.getRoot(), "Account updated");
+        });
+    }
 
     @FXML private void onAddDebit() {
         if (customer == null) return;

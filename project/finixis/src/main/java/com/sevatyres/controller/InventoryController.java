@@ -35,8 +35,9 @@ public class InventoryController implements Initializable, PageController {
         inventoryService = AppServices.inventory();
 
         nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
-        skuCol.setCellValueFactory(new PropertyValueFactory<>("name"));  // no SKU in DB
-        catCol.setCellValueFactory(new PropertyValueFactory<>("name"));  // no category in DB
+        skuCol.setCellValueFactory(new PropertyValueFactory<>("brand"));
+        catCol.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(
+                cell.getValue().getCategory() != null ? cell.getValue().getCategory() : "—"));
         qtyCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
         priceCol.setCellValueFactory(new PropertyValueFactory<>("unitPrice"));
         stockCol.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue()));
