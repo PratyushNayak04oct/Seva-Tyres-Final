@@ -426,6 +426,42 @@
 .dialog-root {
     -fx-background-color: -bg;
 }
+.dialog-header, .dialog-footer {
+    -fx-background-color: -bg;
+}
+.dialog-title {
+    -fx-font-size: 17px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -text;
+}
+.dialog-scroll {
+    -fx-background-color: -bg;
+    -fx-background: -bg;
+}
+.dialog-scroll > .viewport {
+    -fx-background-color: -bg;
+}
+.dialog-list {
+    -fx-background-color: -surface;
+    -fx-control-inner-background: -surface;
+    -fx-border-color: -border;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+}
+.dialog-list .list-cell {
+    -fx-background-color: -surface;
+    -fx-text-fill: -text;
+}
+.dialog-list .list-cell:filled:hover {
+    -fx-background-color: -surface-2;
+}
+.dialog-list .list-cell:filled:selected {
+    -fx-background-color: -primary-100;
+    -fx-text-fill: -text;
+}
+.dialog-list .label {
+    -fx-text-fill: -text;
+}
 
 /* ---------- Scrollbars ---------- */
 .scroll-pane { -fx-background-color: transparent; }

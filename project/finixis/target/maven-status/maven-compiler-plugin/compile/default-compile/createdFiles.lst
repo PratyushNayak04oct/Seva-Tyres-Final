@@ -75,6 +75,7 @@ com\sevatyres\controller\InventoryController$3.class
 com\finixis\controller\UsersController$4.class
 com\finixis\repository\impl\JdbcInventoryRepository.class
 com\sevatyres\controller\UsersController$1.class
+com\sevatyres\service\EmailService$2.class
 com\sevatyres\controller\AccountsController$1.class
 com\finixis\model\InventoryItem.class
 com\sevatyres\db\DatabaseConfig.class

@@ -208,29 +208,32 @@ public final class Dialogs {
     // â”€â”€â”€ Record Payment dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public static void showRecordPayment(Customer customer, Runnable onConfirm) {
-        Stage stage = buildDialogStage("Record Payment â€” " + customer.getName());
-
+        Stage stage = buildDialogStage("Record Payment â€” " + customer.getName(), 640, 820);
         VBox content = contentVBox();
         Label title = dialogTitle("Record Payment");
-        Label sub   = dialogSub("Customer: " + customer.getName() + "  Â·  Select items and enter amount paid.");
+        Label sub   = dialogSub("Customer: " + customer.getName() + "  Â·  Select items and enter payment by method.");
 
         VBox itemsBox = new VBox(10);
         List<InventoryItem> inventory = AppServices.inventory().getAll();
 
         Label totalAmountLabel = new Label("\u20b90.00");
         totalAmountLabel.setStyle("-fx-font-weight:700; -fx-font-size:16px; -fx-text-fill: -primary-600;");
-
-        TextField paidField = styledField("0.00");
-
         Label remainingLabel = new Label("\u20b90.00");
         remainingLabel.setStyle("-fx-font-weight:700; -fx-font-size:14px;");
-
         Label err = errLabel();
+
+        TextField phonePeField    = styledField("0.00");
+        TextField acTransferField = styledField("0.00");
+        TextField cardSwipeField  = styledField("0.00");
+        TextField bajajField      = styledField("0.00");
+        TextField cashField       = styledField("0.00");
+        TextField chequeField     = styledField("0.00");
 
         List<ComboBox<InventoryItem>> itemCombos = new ArrayList<>();
         List<TextField> qtyFields = new ArrayList<>();
 
-        Runnable updateTotals = () -> {
+        Runnable[] updateTotalsRef = new Runnable[1];
+        updateTotalsRef[0] = () -> {
             double total = 0;
             for (int i = 0; i < itemCombos.size(); i++) {
                 InventoryItem item = itemCombos.get(i).getValue();
@@ -241,13 +244,13 @@ public final class Dialogs {
                     } catch (NumberFormatException ignored) {}
                 }
             }
-            double t = total;
-            totalAmountLabel.setText(UiUtil.money(t));
-            double paid = 0;
-            try { paid = Double.parseDouble(paidField.getText().trim()); } catch (Exception ignored) {}
-            double remaining = t - paid;
-            remainingLabel.setText(UiUtil.money(Math.max(0, remaining)));
-            remainingLabel.setStyle(remaining > 0
+            double paid = parseDouble(phonePeField) + parseDouble(acTransferField)
+                    + parseDouble(cardSwipeField) + parseDouble(bajajField)
+                    + parseDouble(cashField) + parseDouble(chequeField);
+            totalAmountLabel.setText(UiUtil.money(total));
+            double rem = total - paid;
+            remainingLabel.setText(UiUtil.money(Math.max(0, rem)));
+            remainingLabel.setStyle(rem > 0.009
                     ? "-fx-font-weight:700; -fx-font-size:14px; -fx-text-fill: -error-600;"
                     : "-fx-font-weight:700; -fx-font-size:14px; -fx-text-fill: -success-600;");
         };
@@ -257,7 +260,7 @@ public final class Dialogs {
             ComboBox<InventoryItem> combo = new ComboBox<>();
             combo.getItems().addAll(inventory);
             combo.setPromptText("Select item\u2026");
-            combo.setPrefWidth(220);
+            combo.setPrefWidth(240);
             combo.getStyleClass().add("combo");
             combo.setCellFactory(lv -> new ListCell<>() {
                 @Override protected void updateItem(InventoryItem item, boolean empty) {
@@ -291,8 +294,8 @@ public final class Dialogs {
                 }
             };
 
-            combo.valueProperty().addListener((obs, o, n) -> { updateAvail.run(); updateTotals.run(); });
-            qtyField.textProperty().addListener((obs, o, n) -> { updateAvail.run(); updateTotals.run(); });
+            combo.valueProperty().addListener((obs, o, n) -> { updateAvail.run(); updateTotalsRef[0].run(); });
+            qtyField.textProperty().addListener((obs, o, n) -> { updateAvail.run(); updateTotalsRef[0].run(); });
 
             Button removeBtn = new Button("\u2715");
             removeBtn.getStyleClass().addAll("btn", "btn-secondary");
@@ -311,7 +314,7 @@ public final class Dialogs {
                     itemsBox.getChildren().remove(row);
                     itemCombos.remove(idx);
                     qtyFields.remove(idx);
-                    updateTotals.run();
+                    updateTotalsRef[0].run();
                 }
             });
         };
@@ -319,17 +322,28 @@ public final class Dialogs {
 
         Button addMoreBtn = new Button("+ Add another item");
         addMoreBtn.getStyleClass().addAll("btn", "btn-ghost");
-        addMoreBtn.setOnAction(ev -> { addRowRef[0].run(); updateTotals.run(); });
+        addMoreBtn.setOnAction(ev -> { addRowRef[0].run(); updateTotalsRef[0].run(); });
 
-        paidField.textProperty().addListener((obs, o, n) -> updateTotals.run());
+        for (TextField tf : new TextField[]{phonePeField, acTransferField, cardSwipeField,
+                bajajField, cashField, chequeField}) {
+            tf.textProperty().addListener((o, a, b) -> updateTotalsRef[0].run());
+        }
 
         Label itemsLabel = new Label("ITEMS");
         itemsLabel.setStyle("-fx-font-size:11px; -fx-font-weight:700; -fx-text-fill: -neutral-400;");
+        Label payHeader = new Label("PAYMENT METHODS");
+        payHeader.setStyle("-fx-font-size:11px; -fx-font-weight:700; -fx-text-fill: -neutral-400;");
+        VBox payForm = new VBox(10, payHeader,
+                labeledField("PhonePe (UPI) \u20b9", phonePeField),
+                labeledField("Account Transfer \u20b9", acTransferField),
+                labeledField("Card Swipe \u20b9", cardSwipeField),
+                labeledField("Bajaj Finance \u20b9", bajajField),
+                labeledField("Cash \u20b9", cashField),
+                labeledField("Cheque \u20b9", chequeField));
 
         HBox totalRow = new HBox(12, new Label("Total Amount:"), totalAmountLabel);
         totalRow.setAlignment(Pos.CENTER_LEFT);
         totalRow.setStyle("-fx-background-color: -surface-2; -fx-padding: 10 14; -fx-background-radius: 8;");
-
         HBox remainingRow = new HBox(12, new Label("Remaining Amount:"), remainingLabel);
         remainingRow.setAlignment(Pos.CENTER_LEFT);
         remainingRow.setStyle("-fx-background-color: -surface-2; -fx-padding: 10 14; -fx-background-radius: 8;");
@@ -337,21 +351,19 @@ public final class Dialogs {
         content.getChildren().addAll(
                 new VBox(4, title, sub), new Separator(),
                 itemsLabel, itemsBox, addMoreBtn,
-                new Separator(),
-                totalRow, labeledField("Paid Amount (\u20b9)", paidField), remainingRow, err);
+                new Separator(), payForm, new Separator(),
+                totalRow, remainingRow, err);
 
         Button cancelBtn  = new Button("Cancel");
         cancelBtn.getStyleClass().addAll("btn", "btn-secondary");
         Button confirmBtn = new Button("Confirm Payment");
         confirmBtn.getStyleClass().add("btn");
-        HBox btnRow = buttonRow(cancelBtn, confirmBtn);
 
         cancelBtn.setOnAction(e -> stage.close());
         confirmBtn.setOnAction(e -> {
             boolean hasItem = itemCombos.stream().anyMatch(c -> c.getValue() != null);
             if (!hasItem) { err.setText("Please select at least one item."); return; }
 
-            // Task 6: Validate qty against available stock
             for (int i = 0; i < itemCombos.size(); i++) {
                 InventoryItem item = itemCombos.get(i).getValue();
                 if (item == null) continue;
@@ -366,14 +378,10 @@ public final class Dialogs {
                 }
             }
 
-            double paid;
-            try {
-                paid = Double.parseDouble(paidField.getText().trim());
-                if (paid < 0) throw new NumberFormatException();
-            } catch (NumberFormatException ex) {
-                err.setText("Please enter a valid paid amount.");
-                return;
-            }
+            double paid = parseDouble(phonePeField) + parseDouble(acTransferField)
+                    + parseDouble(cardSwipeField) + parseDouble(bajajField)
+                    + parseDouble(cashField) + parseDouble(chequeField);
+            if (paid < 0) { err.setText("Please enter valid payment amounts."); return; }
 
             List<TransactionLineItem> lineItems = new ArrayList<>();
             StringBuilder desc = new StringBuilder();
@@ -396,12 +404,12 @@ public final class Dialogs {
             if (onConfirm != null) onConfirm.run();
         });
 
-        presentDialog(stage, content, btnRow);
+        presentDialog(stage, content, buttonRow(cancelBtn, confirmBtn), 640);
     }
 
     // â”€â”€â”€ New Sale Transaction dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
+public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
         Stage stage = buildDialogStage("New Transaction", 820, 980);
         VBox content = contentVBox();
         content.setPrefWidth(860);
@@ -1256,105 +1264,114 @@ public final class Dialogs {
         presentDialog(stage, content, buttonRow(cancelBtn, goBtn));
     }
 
-    // â”€â”€â”€ Edit Transaction dialog (credit amount validation â€” Task 5) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â”€â”€â”€ Edit Transaction dialog (credit / remaining payment) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public static void showEditTransaction(Transaction t, Runnable onSave) {
-        Stage stage = buildDialogStage("Edit Transaction");
-
+        Stage stage = buildDialogStage("Edit Credit â€” Pay Remaining", 640, 800);
         VBox content = contentVBox();
-        Label title = dialogTitle("Edit Transaction");
+        Label title = dialogTitle("Pay Remaining Credit");
+        Label sub   = dialogSub("Same transaction is updated each time you pay. Remaining balance and last date change.");
 
-        VBox infoForm = new VBox(14,
+        VBox infoForm = new VBox(12,
                 labeledField("Description / Items", readonlyField(
                         t.getDescription() != null ? t.getDescription() : t.getType().name())),
-                labeledField("Original Total Amount (\u20b9)", readonlyField(UiUtil.money(t.getAmount()))),
-                labeledField("Transaction Date",      readonlyField(UiUtil.date(t.getDate()))),
-                labeledField("Current Balance (\u20b9)", readonlyField(UiUtil.money(t.getBalance()))));
+                labeledField("Original Total (\u20b9)", readonlyField(UiUtil.money(t.getAmount()))),
+                labeledField("Already Paid (\u20b9)", readonlyField(UiUtil.money(t.getPaidAmount()))),
+                labeledField("Last Transaction Date", readonlyField(UiUtil.date(t.getDate()))),
+                labeledField("Remaining Credit (\u20b9)", readonlyField(UiUtil.money(t.getBalance()))));
 
-        TextField payLaterField = styledField("0");
-        payLaterField.setText("0");
+        TextField phonePeField    = styledField("0.00");
+        TextField acTransferField = styledField("0.00");
+        TextField cardSwipeField  = styledField("0.00");
+        TextField bajajField      = styledField("0.00");
+        TextField cashField       = styledField("0.00");
+        TextField chequeField     = styledField("0.00");
 
         DatePicker paymentDatePicker = new DatePicker(LocalDate.now());
         paymentDatePicker.getStyleClass().add("date-picker");
         paymentDatePicker.setMaxWidth(Double.MAX_VALUE);
 
         Label remainingLabel = new Label(UiUtil.money(t.getBalance()));
-        remainingLabel.setStyle("-fx-font-weight:700; -fx-font-size:14px; -fx-text-fill: -success-600;");
-
-        // Task 5: Validate against remaining balance
+        remainingLabel.setStyle("-fx-font-weight:700; -fx-font-size:14px; -fx-text-fill: -error-600;");
         Label overErr = new Label();
-        overErr.setStyle("-fx-text-fill: -error-600; -fx-font-size:11px;");
+        overErr.setStyle("-fx-text-fill: -error-600; -fx-font-size:12px;");
+        final double creditCap = t.getBalance();
 
         Runnable updateRemaining = () -> {
-            double payAmt = 0;
-            try { payAmt = Double.parseDouble(payLaterField.getText().trim()); }
-            catch (NumberFormatException ignored) {}
-
-            // Validate: cannot pay more than remaining balance
-            if (t.getType() == Transaction.Type.CREDIT && payAmt > t.getBalance()) {
-                overErr.setText("Amount exceeds remaining balance (\u20b9"
-                        + String.format("%.2f", t.getBalance()) + ").");
-            } else if (t.getType() == Transaction.Type.DEBIT && payAmt > t.getBalance()) {
-                overErr.setText("Amount exceeds outstanding debit (\u20b9"
-                        + String.format("%.2f", t.getBalance()) + ").");
+            double payAmt = parseDouble(phonePeField) + parseDouble(acTransferField)
+                    + parseDouble(cardSwipeField) + parseDouble(bajajField)
+                    + parseDouble(cashField) + parseDouble(chequeField);
+            if (payAmt > creditCap + 0.009) {
+                overErr.setText("Amount entered is greater than remaining credit ("
+                        + UiUtil.money(creditCap) + ").");
             } else {
                 overErr.setText("");
             }
-
-            double newBal = t.getBalance() - payAmt;
-            remainingLabel.setText(UiUtil.money(Math.max(0, newBal)));
-            remainingLabel.setStyle(newBal > 0
+            double newBal = Math.max(0, creditCap - payAmt);
+            remainingLabel.setText(UiUtil.money(newBal));
+            remainingLabel.setStyle(newBal > 0.009
                     ? "-fx-font-weight:700; -fx-font-size:14px; -fx-text-fill: -error-600;"
                     : "-fx-font-weight:700; -fx-font-size:14px; -fx-text-fill: -success-600;");
         };
+        for (TextField tf : new TextField[]{phonePeField, acTransferField, cardSwipeField,
+                bajajField, cashField, chequeField}) {
+            tf.textProperty().addListener((o, a, b) -> updateRemaining.run());
+        }
 
-        payLaterField.textProperty().addListener((obs, o, n) -> updateRemaining.run());
-
-        VBox editForm = new VBox(14,
-                labeledField("Pay Later Amount (\u20b9)", payLaterField),
+        Label payHeader = new Label("NEW PAYMENT METHODS (enter amounts to apply against remaining credit)");
+        payHeader.setStyle("-fx-font-size:11px; -fx-font-weight:700; -fx-text-fill: -neutral-400;");
+        VBox payForm = new VBox(10, payHeader,
+                labeledField("PhonePe \u20b9", phonePeField),
+                labeledField("A/C Transfer \u20b9", acTransferField),
+                labeledField("Card Swipe \u20b9", cardSwipeField),
+                labeledField("Bajaj Finance \u20b9", bajajField),
+                labeledField("Cash \u20b9", cashField),
+                labeledField("Cheque \u20b9", chequeField),
                 labeledField("Payment Date", paymentDatePicker));
 
-        HBox remainingRow = new HBox(12, new Label("Remaining Balance:"), remainingLabel);
+        HBox remainingRow = new HBox(12, new Label("Remaining after this payment:"), remainingLabel);
         remainingRow.setAlignment(Pos.CENTER_LEFT);
         remainingRow.setStyle("-fx-background-color: -surface-2; -fx-padding: 10 14; -fx-background-radius: 8;");
 
         Label err = errLabel();
-        content.getChildren().addAll(title, new Separator(), infoForm, new Separator(),
-                editForm, overErr, remainingRow, err);
+        content.getChildren().addAll(
+                new VBox(4, title, sub), new Separator(), infoForm, new Separator(),
+                payForm, overErr, remainingRow, err);
 
         Button cancelBtn = new Button("Cancel");
         cancelBtn.getStyleClass().addAll("btn", "btn-secondary");
-        Button saveBtn = new Button("Save");
+        Button saveBtn = new Button("Apply Payment");
         saveBtn.getStyleClass().add("btn");
 
         cancelBtn.setOnAction(e -> stage.close());
         saveBtn.setOnAction(e -> {
             if (!overErr.getText().isEmpty()) { err.setText(overErr.getText()); return; }
-            double payAmt;
-            try {
-                payAmt = Double.parseDouble(payLaterField.getText().trim());
-                if (payAmt < 0) throw new NumberFormatException();
-            } catch (NumberFormatException ex) {
-                err.setText("Please enter a valid non-negative amount.");
+            double payAmt = parseDouble(phonePeField) + parseDouble(acTransferField)
+                    + parseDouble(cardSwipeField) + parseDouble(bajajField)
+                    + parseDouble(cashField) + parseDouble(chequeField);
+            if (payAmt <= 0) { err.setText("Enter a payment amount greater than zero."); return; }
+            if (payAmt > creditCap + 0.009) {
+                err.setText("Amount entered is greater than remaining credit.");
                 return;
             }
-            if (payAmt == 0) { stage.close(); return; }
             LocalDate payDate = paymentDatePicker.getValue() != null
                     ? paymentDatePicker.getValue() : LocalDate.now();
+            // Same credit transaction: accumulate paid, update remaining + last date
             AppServices.transactions().recordPartialPayment(t.getId(), payAmt, payDate);
             t.setBalance(Math.max(0, t.getBalance() - payAmt));
             t.setPaidAmount(t.getPaidAmount() + payAmt);
+            t.setDate(payDate);
             t.setOngoing(t.getBalance() > 0);
             stage.close();
             if (onSave != null) onSave.run();
         });
 
-        presentDialog(stage, content, buttonRow(cancelBtn, saveBtn));
+        presentDialog(stage, content, buttonRow(cancelBtn, saveBtn), 640);
     }
 
     // â”€â”€â”€ View Transaction dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    public static void showViewTransaction(Transaction t) {
+public static void showViewTransaction(Transaction t) {
         Stage stage = buildDialogStage("Transaction Details");
         VBox content = contentVBox();
         Label title = dialogTitle("Transaction Details");

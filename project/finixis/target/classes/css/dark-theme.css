@@ -175,3 +175,44 @@
 .ist-clock {
     -fx-text-fill: #60a5fa;
 }
+
+/* Send / campaign dialogs — kill residual white surfaces in dark mode */
+.dialog-root,
+.dialog-header,
+.dialog-footer {
+    -fx-background-color: #0b1120;
+}
+.dialog-title {
+    -fx-text-fill: #e2e8f0;
+}
+.dialog-scroll,
+.dialog-scroll > .viewport {
+    -fx-background-color: #0b1120;
+}
+.dialog-list {
+    -fx-background-color: #111827;
+    -fx-control-inner-background: #111827;
+    -fx-border-color: #243044;
+}
+.dialog-list .list-cell {
+    -fx-background-color: #111827;
+    -fx-text-fill: #e2e8f0;
+}
+.dialog-list .list-cell:filled:hover {
+    -fx-background-color: #1e293b;
+}
+.dialog-list .list-cell:filled:selected {
+    -fx-background-color: #1e3a5f;
+    -fx-text-fill: #f8fafc;
+}
+.dialog-list .label {
+    -fx-text-fill: #e2e8f0;
+}
+.section-card {
+    -fx-background-color: #111827;
+    -fx-border-color: #243044;
+    -fx-effect: null;
+}
+.separator {
+    -fx-background-color: #243044;
+}

@@ -184,13 +184,14 @@ public class AlertsController implements Initializable, PageController {
 
         // ── Dialog header ──
         Label hdr = new Label("Send — " + cfg.getName());
-        hdr.setStyle("-fx-font-size:17px; -fx-font-weight:700;");
+        hdr.getStyleClass().add("dialog-title");
         Label subInfo = new Label(
                 "Channel: " + cfg.getChannel().name()
                 + "   ·   Every " + cfg.getIntervalDays() + " day(s)"
                 + "   ·   Duration: " + cfg.getDurationDays() + " day(s)");
         subInfo.getStyleClass().addAll("text-sm", "text-muted");
         VBox headerBox = new VBox(4, hdr, subInfo);
+        headerBox.getStyleClass().add("dialog-header");
         headerBox.setPadding(new Insets(20, 24, 12, 24));
 
         // ── Section 1: pick from existing customers ──
@@ -287,6 +288,7 @@ public class AlertsController implements Initializable, PageController {
 
         ListView<RecipientEntry> recipList = new ListView<>(recipients);
         recipList.setPrefHeight(160);
+        recipList.getStyleClass().add("dialog-list");
         recipList.setCellFactory(lv -> new ListCell<>() {
             private final Label  infoLbl   = new Label();
             private final Button removeBtn = new Button("Remove");
@@ -354,9 +356,11 @@ public class AlertsController implements Initializable, PageController {
         scroll.setFitToWidth(true);
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scroll.setMaxHeight(510);
+        scroll.getStyleClass().add("dialog-scroll");
 
         VBox outer = new VBox(headerBox, new Separator(), scroll, btnRow);
         outer.getStyleClass().add("dialog-root");
+        btnRow.getStyleClass().add("dialog-footer");
 
         Scene scene = new Scene(outer);
         com.sevatyres.viewmodel.ThemeManager.register(scene);

@@ -28,6 +28,10 @@ public class SaleTransactionService {
     public List<SaleTransaction> getByDateRange(LocalDate from, LocalDate to) { return repo.findByDateRange(from, to); }
     public List<SaleTransaction> getByCustomer(int customerId) { return repo.findByCustomerId(customerId); }
 
+    public List<SaleTransactionItem> getItems(int saleId) {
+        return ((JdbcSaleTransactionRepository) repo).findItemsBySaleId(saleId);
+    }
+
     /**
      * Saves a single-item sale transaction, then:
      *  1. Deducts stock from Inventory if an inventory item was linked.
@@ -128,6 +132,17 @@ public class SaleTransactionService {
                 String note = "Credit from Bill " + saved.getBillNo() + " — " + saved.getParticulars();
                 // Correctly records as Transaction_Credit (money owed to the business)
                 txnService.addCreditForSale(customer.getId(), customer.getName(), saved.getCreditAmount(), note);
+
+                // Ensure credit reminder campaign exists, then email the customer immediately
+                try {
+                    AppServices.alerts().ensureCreditPaymentCampaign();
+                    List<SaleTransactionItem> emailItems = items != null && !items.isEmpty()
+                            ? items
+                            : ((JdbcSaleTransactionRepository) repo).findItemsBySaleId(saved.getId());
+                    AppServices.email().sendCreditSaleSummary(customer, saved, emailItems);
+                } catch (Exception mailEx) {
+                    System.err.println("[SaleTransaction] Credit email failed: " + mailEx.getMessage());
+                }
             } catch (Exception e) {
                 System.err.println("[SaleTransaction] Transaction_Credit creation failed: " + e.getMessage());
             }

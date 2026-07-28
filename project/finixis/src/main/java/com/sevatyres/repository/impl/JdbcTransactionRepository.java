@@ -142,13 +142,20 @@ public class JdbcTransactionRepository implements TransactionRepository {
 
     @Override
     public void partialPayment(int id, double amt, LocalDate date) {
+        LocalDate payDate = date != null ? date : LocalDate.now();
+        // Same credit row: accumulate payment, reduce balance, bump last transaction date
         String updateSql = "UPDATE Transaction_Credit "
                 + "SET paid_amount = paid_amount + ?, "
-                + "balance = CASE WHEN balance - ? < 0 THEN 0 ELSE balance - ? END "
+                + "balance = CASE WHEN balance - ? < 0 THEN 0 ELSE balance - ? END, "
+                + "transaction_date = ? "
                 + "WHERE transaction_id = ?";
         try (Connection con = DatabaseConfig.get();
              PreparedStatement ps = con.prepareStatement(updateSql)) {
-            ps.setDouble(1, amt); ps.setDouble(2, amt); ps.setDouble(3, amt); ps.setInt(4, id);
+            ps.setDouble(1, amt);
+            ps.setDouble(2, amt);
+            ps.setDouble(3, amt);
+            ps.setDate(4, Date.valueOf(payDate));
+            ps.setInt(5, id);
             ps.executeUpdate();
         } catch (SQLException e) { throw new RuntimeException(e); }
         String settleSql = "UPDATE Transaction_Credit SET is_settled = TRUE "
@@ -235,5 +242,34 @@ public class JdbcTransactionRepository implements TransactionRepository {
             }
             ps.executeBatch();
         }
+    }
+
+    /** Line items for a credit transaction (empty if none). */
+    public List<TransactionLineItem> findItemsByCreditId(int transactionId) {
+        List<TransactionLineItem> list = new ArrayList<>();
+        String sql = "SELECT tci.line_item_id, tci.transaction_id, tci.item_id, "
+                + "COALESCE(i.item_name, 'Item') AS item_name, "
+                + "tci.quantity, tci.unit_price_snapshot, tci.line_total "
+                + "FROM Transaction_Credit_Item tci "
+                + "LEFT JOIN Inventory i ON i.item_id = tci.item_id "
+                + "WHERE tci.transaction_id=? ORDER BY tci.line_item_id";
+        try (Connection con = DatabaseConfig.get();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, transactionId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    TransactionLineItem li = new TransactionLineItem(
+                            rs.getInt("item_id"),
+                            rs.getString("item_name"),
+                            rs.getInt("quantity"),
+                            rs.getDouble("unit_price_snapshot"));
+                    li.setLineItemId(rs.getInt("line_item_id"));
+                    li.setTransactionId(rs.getInt("transaction_id"));
+                    li.setLineTotal(rs.getDouble("line_total"));
+                    list.add(li);
+                }
+            }
+        } catch (SQLException e) { throw new RuntimeException(e); }
+        return list;
     }
 }
