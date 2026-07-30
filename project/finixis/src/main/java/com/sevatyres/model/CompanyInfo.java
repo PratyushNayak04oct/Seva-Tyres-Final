@@ -23,6 +23,7 @@ public class CompanyInfo {
     private String aboutText;
     private String supportEmail;
     private String supportPhone;
+    private String alertEmail;    // From-address used for customer alert emails
 
     public CompanyInfo() {}
 
@@ -80,6 +81,9 @@ public class CompanyInfo {
     public String getSupportPhone() { return supportPhone; }
     public void setSupportPhone(String supportPhone) { this.supportPhone = supportPhone; }
 
+    public String getAlertEmail() { return alertEmail; }
+    public void setAlertEmail(String alertEmail) { this.alertEmail = alertEmail; }
+
     public String getFullAddress() {
         StringBuilder sb = new StringBuilder();
         if (address != null && !address.isBlank()) sb.append(address.trim());
@@ -108,5 +112,13 @@ public class CompanyInfo {
         if (!em.isBlank() && !ph.isBlank()) return em + " · " + ph;
         if (!em.isBlank()) return em;
         return ph;
+    }
+
+    /** Preferred From address for alert emails (falls back to company email). */
+    public String resolveAlertEmail() {
+        if (alertEmail != null && !alertEmail.isBlank()) return alertEmail.trim();
+        if (email != null && !email.isBlank()) return email.trim();
+        if (supportEmail != null && !supportEmail.isBlank()) return supportEmail.trim();
+        return "";
     }
 }

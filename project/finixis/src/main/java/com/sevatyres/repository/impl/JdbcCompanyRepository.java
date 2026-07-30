@@ -17,55 +17,82 @@ public class JdbcCompanyRepository {
              ResultSet rs = st.executeQuery("SELECT * FROM Company_Info WHERE company_id=1")) {
             if (rs.next()) return mapCompany(rs);
         } catch (SQLException e) { throw new RuntimeException(e); }
-        // Ensure singleton row
         CompanyInfo defaults = new CompanyInfo();
         saveCompany(defaults);
         return defaults;
     }
 
     public void saveCompany(CompanyInfo c) {
-        String upsert = "MERGE INTO Company_Info (company_id, company_name, owner_name, email, phone, dbt_phone, "
-                + "address, city, state, pincode, gstin, bank_name, bank_account, bank_ifsc, upi_id, "
-                + "about_text, support_email, support_phone) KEY(company_id) VALUES "
-                + "(1,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-        // H2 supports MERGE; PostgreSQL uses INSERT ON CONFLICT
-        String pg = "INSERT INTO Company_Info(company_id,company_name,owner_name,email,phone,dbt_phone,"
+        // Prefer UPDATE; insert if no row
+        String upd = "UPDATE Company_Info SET company_name=?,owner_name=?,email=?,phone=?,dbt_phone=?,"
+                + "address=?,city=?,state=?,pincode=?,gstin=?,bank_name=?,bank_account=?,"
+                + "bank_ifsc=?,upi_id=?,about_text=?,support_email=?,support_phone=?,alert_email=? "
+                + "WHERE company_id=1";
+        String ins = "INSERT INTO Company_Info(company_id,company_name,owner_name,email,phone,dbt_phone,"
                 + "address,city,state,pincode,gstin,bank_name,bank_account,bank_ifsc,upi_id,"
-                + "about_text,support_email,support_phone) VALUES(1,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
-                + "ON CONFLICT (company_id) DO UPDATE SET "
-                + "company_name=EXCLUDED.company_name, owner_name=EXCLUDED.owner_name, email=EXCLUDED.email, "
-                + "phone=EXCLUDED.phone, dbt_phone=EXCLUDED.dbt_phone, address=EXCLUDED.address, "
-                + "city=EXCLUDED.city, state=EXCLUDED.state, pincode=EXCLUDED.pincode, gstin=EXCLUDED.gstin, "
-                + "bank_name=EXCLUDED.bank_name, bank_account=EXCLUDED.bank_account, bank_ifsc=EXCLUDED.bank_ifsc, "
-                + "upi_id=EXCLUDED.upi_id, about_text=EXCLUDED.about_text, "
-                + "support_email=EXCLUDED.support_email, support_phone=EXCLUDED.support_phone";
-        try (Connection con = DatabaseConfig.get()) {
-            try (PreparedStatement ps = con.prepareStatement(pg)) {
-                bindCompany(ps, c);
-                ps.executeUpdate();
-            } catch (SQLException primary) {
-                try (PreparedStatement ps = con.prepareStatement(upsert)) {
-                    bindCompany(ps, c);
-                    ps.executeUpdate();
-                } catch (SQLException secondary) {
-                    // Fallback: update then insert
-                    try (PreparedStatement upd = con.prepareStatement(
-                            "UPDATE Company_Info SET company_name=?,owner_name=?,email=?,phone=?,dbt_phone=?,"
-                                    + "address=?,city=?,state=?,pincode=?,gstin=?,bank_name=?,bank_account=?,"
-                                    + "bank_ifsc=?,upi_id=?,about_text=?,support_email=?,support_phone=? "
-                                    + "WHERE company_id=1")) {
-                        bindCompany(upd, c);
-                        int n = upd.executeUpdate();
-                        if (n == 0) {
-                            try (PreparedStatement ins = con.prepareStatement(
-                                    "INSERT INTO Company_Info(company_id,company_name,owner_name,email,phone,dbt_phone,"
-                                            + "address,city,state,pincode,gstin,bank_name,bank_account,bank_ifsc,upi_id,"
-                                            + "about_text,support_email,support_phone) VALUES(1,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")) {
-                                bindCompany(ins, c);
-                                ins.executeUpdate();
-                            }
-                        }
-                    }
+                + "about_text,support_email,support_phone,alert_email) VALUES(1,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        try (Connection con = DatabaseConfig.get();
+             PreparedStatement ps = con.prepareStatement(upd)) {
+            bindCompany(ps, c);
+            int n = ps.executeUpdate();
+            if (n == 0) {
+                try (PreparedStatement insert = con.prepareStatement(ins)) {
+                    bindCompany(insert, c);
+                    insert.executeUpdate();
+                }
+            }
+        } catch (SQLException e) {
+            // Older DB without alert_email — save without that column
+            saveCompanyLegacy(c);
+        }
+    }
+
+    private void saveCompanyLegacy(CompanyInfo c) {
+        String upd = "UPDATE Company_Info SET company_name=?,owner_name=?,email=?,phone=?,dbt_phone=?,"
+                + "address=?,city=?,state=?,pincode=?,gstin=?,bank_name=?,bank_account=?,"
+                + "bank_ifsc=?,upi_id=?,about_text=?,support_email=?,support_phone=? WHERE company_id=1";
+        String ins = "INSERT INTO Company_Info(company_id,company_name,owner_name,email,phone,dbt_phone,"
+                + "address,city,state,pincode,gstin,bank_name,bank_account,bank_ifsc,upi_id,"
+                + "about_text,support_email,support_phone) VALUES(1,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        try (Connection con = DatabaseConfig.get();
+             PreparedStatement ps = con.prepareStatement(upd)) {
+            ps.setString(1, nullToEmpty(c.getCompanyName(), "Seva Tyres"));
+            ps.setString(2, c.getOwnerName());
+            ps.setString(3, c.getEmail());
+            ps.setString(4, c.getPhone());
+            ps.setString(5, c.getDbtPhone());
+            ps.setString(6, c.getAddress());
+            ps.setString(7, c.getCity());
+            ps.setString(8, c.getState());
+            ps.setString(9, c.getPincode());
+            ps.setString(10, c.getGstin());
+            ps.setString(11, c.getBankName());
+            ps.setString(12, c.getBankAccount());
+            ps.setString(13, c.getBankIfsc());
+            ps.setString(14, c.getUpiId());
+            ps.setString(15, c.getAboutText());
+            ps.setString(16, c.getSupportEmail());
+            ps.setString(17, c.getSupportPhone());
+            if (ps.executeUpdate() == 0) {
+                try (PreparedStatement insert = con.prepareStatement(ins)) {
+                    insert.setString(1, nullToEmpty(c.getCompanyName(), "Seva Tyres"));
+                    insert.setString(2, c.getOwnerName());
+                    insert.setString(3, c.getEmail());
+                    insert.setString(4, c.getPhone());
+                    insert.setString(5, c.getDbtPhone());
+                    insert.setString(6, c.getAddress());
+                    insert.setString(7, c.getCity());
+                    insert.setString(8, c.getState());
+                    insert.setString(9, c.getPincode());
+                    insert.setString(10, c.getGstin());
+                    insert.setString(11, c.getBankName());
+                    insert.setString(12, c.getBankAccount());
+                    insert.setString(13, c.getBankIfsc());
+                    insert.setString(14, c.getUpiId());
+                    insert.setString(15, c.getAboutText());
+                    insert.setString(16, c.getSupportEmail());
+                    insert.setString(17, c.getSupportPhone());
+                    insert.executeUpdate();
                 }
             }
         } catch (SQLException e) { throw new RuntimeException(e); }
@@ -89,6 +116,7 @@ public class JdbcCompanyRepository {
         ps.setString(15, c.getAboutText());
         ps.setString(16, c.getSupportEmail());
         ps.setString(17, c.getSupportPhone());
+        ps.setString(18, c.getAlertEmail());
     }
 
     public List<CompanyMember> findMembers() {
@@ -194,6 +222,7 @@ public class JdbcCompanyRepository {
         c.setAboutText(rs.getString("about_text"));
         c.setSupportEmail(rs.getString("support_email"));
         c.setSupportPhone(rs.getString("support_phone"));
+        try { c.setAlertEmail(rs.getString("alert_email")); } catch (SQLException ignored) {}
         return c;
     }
 

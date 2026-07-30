@@ -147,7 +147,8 @@ public final class DatabaseConfig {
                 "setting_value TEXT)",
             "INSERT INTO Company_Info(company_id, company_name, city, state, pincode) " +
                 "SELECT 1, 'Seva Tyres', 'Bhubaneswar', 'Odisha', '751001' " +
-                "WHERE NOT EXISTS (SELECT 1 FROM Company_Info WHERE company_id = 1)"
+                "WHERE NOT EXISTS (SELECT 1 FROM Company_Info WHERE company_id = 1)",
+            "ALTER TABLE Company_Info ADD COLUMN alert_email VARCHAR(200)"
         };
         try (Connection conn = get(); Statement stmt = conn.createStatement()) {
             for (String sql : migrations) {

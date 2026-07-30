@@ -12,29 +12,29 @@
             <FontIcon iconLiteral="fas-chart-bar" styleClass="page-title"/>
             <VBox>
                 <Label text="Reports &amp; Summary" styleClass="page-title"/>
-                <Label text="Financial overview, invoice template, and generated files" styleClass="page-subtitle"/>
+                <Label text="Financial overview, invoice template file, and generated files" styleClass="page-subtitle"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
         </HBox>
 
-        <!-- Editable invoice template (no file upload) -->
         <VBox styleClass="card,card-pad" spacing="12">
-            <Label text="INVOICE TEMPLATE" styleClass="card-title"/>
-            <Label text="Edit the invoice layout below. Placeholders are filled from the database when you generate an invoice from Transactions."
+            <Label text="INVOICE TEMPLATE FILE" styleClass="card-title"/>
+            <Label text="Use a professional HTML invoice template. Edit the file in any editor, then upload it here. Transaction data (bill number, customer, items, tax, totals) is filled automatically from the database — do not put live amounts in the file."
                    styleClass="txn-meta" wrapText="true"/>
-            <Label text="Placeholders: {company_name} {company_address} {company_contact} {invoice_number} {invoice_date} {due_date} {status} {customer_name} {customer_id} {customer_address} {customer_phone} {customer_email} {items} {subtotal} {tax_label} {tax_amount} {total} {paid} {remaining} {bank_name} {bank_account} {bank_ifsc} {upi_id} {generated_on} {year}"
+            <Label text="Placeholders: {company_name} {company_address_line1} {company_city_line} {company_contact} {bill_no} {status} {status_class} {customer_name} {customer_id} {customer_address} {customer_phone} {customer_email} {invoice_date} {due_date} {items_html} {subtotal} {tax_label} {tax_amount} {total} {paid} {remaining} {bank_name} {bank_account} {bank_ifsc} {upi_id} {support_email} {support_phone} {year} {generated_on}"
                    styleClass="text-sm,text-muted" wrapText="true"/>
-            <TextArea fx:id="invoiceTemplateArea" wrapText="true" prefRowCount="18" prefHeight="320"
-                      styleClass="text-area" promptText="Invoice template text…"/>
             <HBox spacing="12" alignment="CENTER_LEFT">
-                <Button fx:id="saveTemplateBtn" text="Save Template" styleClass="btn" onAction="#onSaveTemplate">
-                    <graphic><FontIcon iconLiteral="fas-save"/></graphic>
+                <Button fx:id="exportTemplateBtn" text="Download Default Template" styleClass="btn,btn-secondary" onAction="#onExportTemplate">
+                    <graphic><FontIcon iconLiteral="fas-download"/></graphic>
                 </Button>
-                <Button fx:id="resetTemplateBtn" text="Reset to Default" styleClass="btn,btn-secondary" onAction="#onResetTemplate">
+                <Button fx:id="uploadTemplateBtn" text="Upload Template" styleClass="btn" onAction="#onUploadTemplate">
+                    <graphic><FontIcon iconLiteral="fas-upload"/></graphic>
+                </Button>
+                <Button fx:id="resetTemplateBtn" text="Use Built-in Default" styleClass="btn,btn-ghost" onAction="#onResetTemplate">
                     <graphic><FontIcon iconLiteral="fas-undo"/></graphic>
                 </Button>
-                <Label fx:id="templateStatusLabel" styleClass="text-muted"/>
             </HBox>
+            <Label fx:id="templateStatusLabel" text="Using built-in professional HTML template" styleClass="text-muted" wrapText="true"/>
         </VBox>
 
         <HBox spacing="16">
@@ -56,7 +56,7 @@
             <HBox alignment="CENTER_LEFT" spacing="10">
                 <FontIcon iconLiteral="fas-folder-open" styleClass="icon-sm"/>
                 <Label text="GENERATED FILES" styleClass="card-title" HBox.hgrow="ALWAYS"/>
-                <Label text="Click Download to open a generated invoice or report." styleClass="txn-meta"/>
+                <Label text="Invoices open as HTML (print to PDF from the browser for a polished bill)." styleClass="txn-meta"/>
             </HBox>
             <VBox fx:id="filesBox" spacing="6"/>
         </VBox>

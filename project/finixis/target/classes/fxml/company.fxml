@@ -36,34 +36,38 @@
                     <TextField fx:id="ownerNameField" styleClass="field"/>
                 </VBox>
                 <VBox spacing="4" GridPane.columnIndex="0" GridPane.rowIndex="1">
-                    <Label text="Company Email (alerts / invoices)" styleClass="form-label"/>
-                    <TextField fx:id="emailField" promptText="support@company.com" styleClass="field"/>
+                    <Label text="Company Email" styleClass="form-label"/>
+                    <TextField fx:id="emailField" promptText="info@company.com" styleClass="field"/>
                 </VBox>
                 <VBox spacing="4" GridPane.columnIndex="1" GridPane.rowIndex="1">
                     <Label text="Contact Number" styleClass="form-label"/>
                     <TextField fx:id="phoneField" promptText="+91 …" styleClass="field"/>
                 </VBox>
                 <VBox spacing="4" GridPane.columnIndex="0" GridPane.rowIndex="2">
+                    <Label text="Alert configured email (sends customer alerts)" styleClass="form-label"/>
+                    <TextField fx:id="alertEmailField" promptText="alerts@company.com — From address for alert emails" styleClass="field"/>
+                </VBox>
+                <VBox spacing="4" GridPane.columnIndex="1" GridPane.rowIndex="2">
                     <Label text="DBT-enabled Number (SMS)" styleClass="form-label"/>
                     <TextField fx:id="dbtPhoneField" promptText="Number used for SMS / DBT" styleClass="field"/>
                 </VBox>
-                <VBox spacing="4" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                <VBox spacing="4" GridPane.columnIndex="0" GridPane.rowIndex="3">
                     <Label text="GSTIN" styleClass="form-label"/>
                     <TextField fx:id="gstinField" styleClass="field"/>
                 </VBox>
-                <VBox spacing="4" GridPane.columnIndex="0" GridPane.rowIndex="3" GridPane.columnSpan="2">
+                <VBox spacing="4" GridPane.columnIndex="0" GridPane.rowIndex="4" GridPane.columnSpan="2">
                     <Label text="Address" styleClass="form-label"/>
                     <TextField fx:id="addressField" styleClass="field"/>
                 </VBox>
-                <VBox spacing="4" GridPane.columnIndex="0" GridPane.rowIndex="4">
+                <VBox spacing="4" GridPane.columnIndex="0" GridPane.rowIndex="5">
                     <Label text="City" styleClass="form-label"/>
                     <TextField fx:id="cityField" styleClass="field"/>
                 </VBox>
-                <VBox spacing="4" GridPane.columnIndex="1" GridPane.rowIndex="4">
+                <VBox spacing="4" GridPane.columnIndex="1" GridPane.rowIndex="5">
                     <Label text="State" styleClass="form-label"/>
                     <TextField fx:id="stateField" styleClass="field"/>
                 </VBox>
-                <VBox spacing="4" GridPane.columnIndex="0" GridPane.rowIndex="5">
+                <VBox spacing="4" GridPane.columnIndex="0" GridPane.rowIndex="6">
                     <Label text="PIN Code" styleClass="form-label"/>
                     <TextField fx:id="pincodeField" styleClass="field"/>
                 </VBox>

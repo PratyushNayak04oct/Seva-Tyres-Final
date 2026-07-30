@@ -707,9 +707,9 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
                 new Separator(),
                 taxForm,
                 new Separator(),
-                payForm,
-                new Separator(),
                 summaryRow,
+                new Separator(),
+                payForm,
                 new Separator(),
                 customerSection,
                 err);

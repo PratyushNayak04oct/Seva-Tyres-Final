@@ -135,20 +135,23 @@ public final class FileGenerationService {
         );
     }
 
-    /** Generate a per-transaction PDF invoice using the editable Reports template + DB data. */
+    /** Generate a professional HTML invoice from the uploaded/built-in template + DB data.
+     *  Bill number is used as the document reference (not a separate invoice id). */
     public static GeneratedFile generateSaleInvoice(SaleTransaction t) throws IOException {
         File dir = outputDir();
-        int year = (t.getSaleDate() != null ? t.getSaleDate() : LocalDate.now()).getYear();
-        String invoiceNum = String.format("INV-%d-%05d", year, t.getId());
+        String billNo = (t.getBillNo() != null && !t.getBillNo().isBlank())
+                ? t.getBillNo().trim()
+                : ("B" + t.getId());
         String customerName = t.getCustomerName() != null ? t.getCustomerName() : "Walk-in Customer";
         String generatedStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("d MMMM yyyy"));
 
         List<SaleTransactionItem> items = new JdbcSaleTransactionRepository().findItemsBySaleId(t.getId());
-        File outFile = new File(dir, "Invoice-" + invoiceNum + ".pdf");
-        writeSaleInvoiceFromTemplate(invoiceNum, customerName, generatedStr, t, items, outFile);
+        String safeName = billNo.replaceAll("[^A-Za-z0-9._-]", "_");
+        File outFile = new File(dir, "Invoice-" + safeName + ".html");
+        writeSaleInvoiceHtml(billNo, customerName, generatedStr, t, items, outFile);
 
-        String name = "Invoice " + invoiceNum + " – " + customerName;
-        return new GeneratedFile(++seq, name, "Invoice", "PDF", LocalDateTime.now(), outFile);
+        String name = "Invoice " + billNo + " – " + customerName;
+        return new GeneratedFile(++seq, name, "Invoice", "HTML", LocalDateTime.now(), outFile);
     }
 
     /** Generate a per-transaction PDF invoice for a Transaction (credit/debit). */
@@ -260,22 +263,19 @@ public final class FileGenerationService {
         return dir;
     }
 
-    // â”€â”€â”€ Sale Invoice from editable template â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â”€â”€â”€ Professional HTML invoice from template file â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    private static void writeSaleInvoiceFromTemplate(String invoiceNum, String customerName,
+    private static void writeSaleInvoiceHtml(String billNo, String customerName,
             String generatedStr, SaleTransaction t, List<SaleTransactionItem> items,
             File outFile) throws IOException {
         CompanyInfo company;
         String template;
         try {
             company = AppServices.company().getCompany();
-            template = AppServices.company().getInvoiceTemplate();
+            template = AppServices.company().getInvoiceHtmlTemplate();
         } catch (Exception e) {
             company = new CompanyInfo();
-            template = CompanyService.defaultInvoiceTemplate();
-        }
-        if (template == null || template.isBlank()) {
-            template = CompanyService.defaultInvoiceTemplate();
+            template = CompanyService.loadBuiltinInvoiceHtmlTemplate();
         }
 
         if (items == null || items.isEmpty()) {
@@ -297,106 +297,96 @@ public final class FileGenerationService {
         double paid = Math.max(0, total - t.getCreditAmount());
         String status = t.getCreditAmount() <= 0.009 ? "Paid"
                 : (paid <= 0.009 ? "Unpaid" : "Partially paid");
+        String statusClass = "Paid".equals(status) ? "paid"
+                : "Unpaid".equals(status) ? "unpaid" : "";
         String custId = t.getCustomerId() != null
                 ? String.format("CUST-%05d", t.getCustomerId()) : "-";
         String taxLabel = (t.getTaxLabel() != null && !t.getTaxLabel().isBlank())
                 ? t.getTaxLabel() : (taxAmt > 0 ? "Tax" : "0%");
 
-        StringBuilder itemsBlock = new StringBuilder();
-        itemsBlock.append(String.format("%-4s %-28s %5s %12s %12s%n", "#", "Description", "Qty", "Unit price", "Amount"));
+        StringBuilder itemsHtml = new StringBuilder();
         int n = 1;
         for (SaleTransactionItem it : items) {
-            itemsBlock.append(String.format("%-4s %-28s %5d %12s %12s%n",
-                    String.format("%02d", n++),
-                    truncate(it.getItemName(), 28),
-                    it.getQuantity(),
-                    pdfMoney(it.getUnitPrice()),
-                    pdfMoney(it.getLineTotal())));
+            itemsHtml.append("        <tr>\n")
+                    .append("          <td class=\"num\">").append(String.format("%02d", n++)).append("</td>\n")
+                    .append("          <td><p class=\"item-name\">").append(htmlEsc(it.getItemName())).append("</p></td>\n")
+                    .append("          <td class=\"qty\">").append(it.getQuantity()).append("</td>\n")
+                    .append("          <td class=\"money\">").append(htmlEsc(moneyInr(it.getUnitPrice()))).append("</td>\n")
+                    .append("          <td class=\"money\">").append(htmlEsc(moneyInr(it.getLineTotal()))).append("</td>\n")
+                    .append("        </tr>\n");
         }
+
+        String addrLine = nz(company.getAddress(), "");
+        String cityLine = "";
+        if (company.getCity() != null && !company.getCity().isBlank()) cityLine += company.getCity().trim();
+        if (company.getState() != null && !company.getState().isBlank()) {
+            if (!cityLine.isEmpty()) cityLine += ", ";
+            cityLine += company.getState().trim();
+        }
+        if (company.getPincode() != null && !company.getPincode().isBlank()) {
+            if (!cityLine.isEmpty()) cityLine += " â€” ";
+            cityLine += company.getPincode().trim();
+        }
+
+        String supportEm = nz(company.getSupportEmail(), nz(company.getEmail(), ""));
+        String supportPh = nz(company.getSupportPhone(), nz(company.getPhone(), ""));
 
         Map<String, String> vars = new LinkedHashMap<>();
-        vars.put("company_name", nz(company.getCompanyName(), "Seva Tyres"));
-        vars.put("company_address", nz(company.getFullAddress(), ""));
-        vars.put("company_contact", nz(company.getContactLine(), ""));
-        vars.put("invoice_number", invoiceNum);
-        vars.put("invoice_date", dateStr);
-        vars.put("due_date", dueStr);
-        vars.put("status", status);
-        vars.put("customer_name", nz(customerName, ""));
-        vars.put("customer_id", custId);
-        vars.put("customer_address", nz(t.getCustomerAddress(), ""));
-        vars.put("customer_phone", nz(t.getCustomerPhone(), ""));
-        vars.put("customer_email", nz(t.getCustomerEmail(), ""));
-        vars.put("items", itemsBlock.toString().trim());
-        vars.put("subtotal", pdfMoney(subtotal));
-        vars.put("tax_label", taxLabel);
-        vars.put("tax_amount", pdfMoney(taxAmt));
-        vars.put("total", pdfMoney(total));
-        vars.put("paid", pdfMoney(paid));
-        vars.put("remaining", pdfMoney(t.getCreditAmount()));
-        vars.put("bank_name", nz(company.getBankName(), ""));
-        vars.put("bank_account", nz(company.getBankAccount(), ""));
-        vars.put("bank_ifsc", nz(company.getBankIfsc(), ""));
-        vars.put("upi_id", nz(company.getUpiId(), ""));
-        vars.put("generated_on", generatedStr);
+        vars.put("company_name", htmlEsc(nz(company.getCompanyName(), "Seva Tyres")));
+        vars.put("company_address", htmlEsc(nz(company.getFullAddress(), "")).replace("\n", "<br/>"));
+        vars.put("company_address_line1", htmlEsc(addrLine));
+        vars.put("company_city_line", htmlEsc(cityLine));
+        vars.put("company_contact", htmlEsc(nz(company.getContactLine(), "")));
+        vars.put("support_email", htmlEsc(supportEm));
+        vars.put("support_phone", htmlEsc(supportPh));
+        vars.put("bill_no", htmlEsc(billNo));
+        vars.put("invoice_number", htmlEsc(billNo));
+        vars.put("invoice_date", htmlEsc(dateStr));
+        vars.put("due_date", htmlEsc(dueStr));
+        vars.put("status", htmlEsc(status));
+        vars.put("status_class", statusClass);
+        vars.put("customer_name", htmlEsc(nz(customerName, "")));
+        vars.put("customer_id", htmlEsc(custId));
+        vars.put("customer_address", htmlEsc(nz(t.getCustomerAddress(), "")));
+        vars.put("customer_phone", htmlEsc(nz(t.getCustomerPhone(), "")));
+        vars.put("customer_email", htmlEsc(nz(t.getCustomerEmail(), "")));
+        vars.put("items_html", itemsHtml.toString());
+        vars.put("items", itemsHtml.toString());
+        vars.put("subtotal", htmlEsc(moneyInr(subtotal)));
+        vars.put("tax_label", htmlEsc(taxLabel));
+        vars.put("tax_amount", htmlEsc(moneyInr(taxAmt)));
+        vars.put("total", htmlEsc(moneyInr(total)));
+        vars.put("paid", htmlEsc(moneyInr(paid)));
+        vars.put("remaining", htmlEsc(moneyInr(t.getCreditAmount())));
+        vars.put("bank_name", htmlEsc(nz(company.getBankName(), "")));
+        vars.put("bank_account", htmlEsc(nz(company.getBankAccount(), "")));
+        vars.put("bank_ifsc", htmlEsc(nz(company.getBankIfsc(), "")));
+        vars.put("upi_id", htmlEsc(nz(company.getUpiId(), "")));
+        vars.put("generated_on", htmlEsc(generatedStr));
         vars.put("year", String.valueOf(saleDate.getYear()));
 
-        List<String> lines = new ArrayList<>();
-        for (String rawLine : template.replace("\r\n", "\n").replace('\r', '\n').split("\n")) {
-            String expanded = rawLine;
-            for (Map.Entry<String, String> e : vars.entrySet()) {
-                expanded = expanded.replace("{" + e.getKey() + "}", e.getValue() != null ? e.getValue() : "");
-            }
-            if (expanded.contains("\n")) {
-                for (String part : expanded.split("\n")) lines.add(part);
-            } else {
-                lines.add(expanded);
-            }
+        String html = template;
+        for (Map.Entry<String, String> e : vars.entrySet()) {
+            html = html.replace("{" + e.getKey() + "}", e.getValue() != null ? e.getValue() : "");
         }
-
-        writeTextLinesPdf(lines, outFile);
+        Files.writeString(outFile.toPath(), html, StandardCharsets.UTF_8);
     }
 
-    private static void writeTextLinesPdf(List<String> lines, File outFile) throws IOException {
-        int leftMargin = 50;
-        int y = 770;
-        StringBuilder cs = new StringBuilder();
-        cs.append("BT /F2 10 Tf\n");
-        for (String line : lines) {
-            if (y < 50) break;
-            String text = line == null ? "" : line;
-            boolean heading = "INVOICE".equals(text)
-                    || text.startsWith("Billed to")
-                    || text.startsWith("Invoice details")
-                    || text.startsWith("Line items")
-                    || text.startsWith("Payment instructions");
-            if (heading) {
-                cs.append("ET\nBT /F1 12 Tf\n");
-            }
-            while (text.length() > 95) {
-                cs.append("1 0 0 1 ").append(leftMargin).append(" ").append(y)
-                  .append(" Tm (").append(pdfEsc(text.substring(0, 95))).append(") Tj\n");
-                text = text.substring(95);
-                y -= 14;
-                if (y < 50) break;
-            }
-            cs.append("1 0 0 1 ").append(leftMargin).append(" ").append(y)
-              .append(" Tm (").append(pdfEsc(text)).append(") Tj\n");
-            y -= (text.isBlank() ? 10 : 14);
-            if (heading) cs.append("ET\nBT /F2 10 Tf\n");
-        }
-        cs.append("ET\n");
-        writePdfToFile(cs.toString().getBytes(StandardCharsets.ISO_8859_1), outFile);
+    private static String moneyInr(double v) {
+        return "\u20b9" + String.format("%,.2f", v);
     }
 
-    private static String pdfMoney(double v) {
-        return String.format("Rs. %,.2f", v);
+    private static String htmlEsc(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
     }
 
     private static String nz(String v, String def) {
         return v == null || v.isBlank() ? def : v;
     }
-
 
     // ─── Legacy Transaction Invoice PDF ──────────────────────────────────────
 

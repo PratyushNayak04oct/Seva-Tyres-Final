@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Invoice {bill_no}</title>
+  <style>
+    :root {
+      --ink: #111827;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --accent: #1e3a5f;
+      --soft: #f8fafc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 40px 48px;
+      font-family: "Segoe UI", Calibri, Arial, sans-serif;
+      color: var(--ink);
+      background: #fff;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    .sheet { max-width: 800px; margin: 0 auto; }
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+    .brand .name {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--accent);
+      margin: 0 0 8px;
+    }
+    .brand .addr, .brand .contact {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .inv-head { text-align: right; }
+    .inv-head .label {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      margin: 0;
+    }
+    .inv-head .bill {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 8px 0 4px;
+    }
+    .status {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .status.paid { background: #ecfdf5; color: #047857; }
+    .status.unpaid { background: #fef2f2; color: #b91c1c; }
+    hr.rule {
+      border: none;
+      border-top: 2px solid var(--accent);
+      margin: 0 0 24px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      margin-bottom: 28px;
+    }
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      font-weight: 700;
+      margin: 0 0 8px;
+    }
+    .customer-name {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0 0 6px;
+    }
+    .muted { color: var(--muted); margin: 2px 0; }
+    .details-table { width: 100%; border-collapse: collapse; }
+    .details-table td {
+      padding: 4px 0;
+      vertical-align: top;
+    }
+    .details-table td:first-child {
+      color: var(--muted);
+      width: 42%;
+    }
+    table.items {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0 20px;
+    }
+    table.items th {
+      text-align: left;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--line);
+      padding: 10px 8px;
+      background: var(--soft);
+    }
+    table.items td {
+      padding: 14px 8px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    table.items .num { width: 40px; color: var(--muted); }
+    table.items .qty { width: 60px; text-align: center; }
+    table.items .money { width: 110px; text-align: right; white-space: nowrap; }
+    .item-name { font-weight: 600; margin: 0; }
+    .item-sub { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .totals {
+      width: 320px;
+      margin-left: auto;
+      margin-bottom: 28px;
+    }
+    .totals .row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      color: var(--muted);
+    }
+    .totals .row.strong {
+      color: var(--ink);
+      font-weight: 700;
+      font-size: 15px;
+      border-top: 1px solid var(--line);
+      margin-top: 6px;
+      padding-top: 10px;
+    }
+    .totals .row.balance {
+      color: #b91c1c;
+      font-weight: 700;
+    }
+    .pay-box {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-bottom: 24px;
+    }
+    .pay-box .section-title { margin-bottom: 10px; }
+    .pay-box table { width: 100%; border-collapse: collapse; }
+    .pay-box td { padding: 4px 0; }
+    .pay-box td:first-child { color: var(--muted); width: 38%; }
+    .note { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+    .footer {
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .footer p { margin: 4px 0; }
+    @media print {
+      body { padding: 16px; }
+      .status { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="top">
+      <div class="brand">
+        <p class="name">{company_name}</p>
+        <p class="addr">{company_address_line1}</p>
+        <p class="addr">{company_city_line}</p>
+        <p class="contact">{company_contact}</p>
+      </div>
+      <div class="inv-head">
+        <p class="label">INVOICE</p>
+        <p class="bill"># {bill_no}</p>
+        <span class="status {status_class}">{status}</span>
+      </div>
+    </div>
+    <hr class="rule"/>
+
+    <div class="grid-2">
+      <div>
+        <p class="section-title">Billed to</p>
+        <p class="customer-name">{customer_name}</p>
+        <p class="muted">{customer_id}</p>
+        <p class="muted">{customer_address}</p>
+        <p class="muted">{customer_phone}</p>
+        <p class="muted">{customer_email}</p>
+      </div>
+      <div>
+        <p class="section-title">Invoice details</p>
+        <table class="details-table">
+          <tr><td>Invoice date</td><td>{invoice_date}</td></tr>
+          <tr><td>Due date</td><td>{due_date}</td></tr>
+          <tr><td>Payment terms</td><td>Net 14</td></tr>
+          <tr><td>Bill number</td><td>{bill_no}</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <p class="section-title">Line items</p>
+    <table class="items">
+      <thead>
+        <tr>
+          <th class="num">#</th>
+          <th>Description</th>
+          <th class="qty">Qty</th>
+          <th class="money">Unit price</th>
+          <th class="money">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+{items_html}
+      </tbody>
+    </table>
+
+    <div class="totals">
+      <div class="row"><span>Subtotal</span><span>{subtotal}</span></div>
+      <div class="row"><span>Tax ({tax_label})</span><span>{tax_amount}</span></div>
+      <div class="row strong"><span>Total amount</span><span>{total}</span></div>
+      <div class="row"><span>Paid amount</span><span>− {paid}</span></div>
+      <div class="row balance"><span>Remaining balance</span><span>{remaining}</span></div>
+    </div>
+
+    <div class="pay-box">
+      <p class="section-title">Payment instructions</p>
+      <table>
+        <tr><td>Bank name</td><td>{bank_name}</td></tr>
+        <tr><td>Account number</td><td>{bank_account}</td></tr>
+        <tr><td>IFSC code</td><td>{bank_ifsc}</td></tr>
+        <tr><td>UPI ID</td><td>{upi_id}</td></tr>
+      </table>
+    </div>
+
+    <p class="note">Please use bill number <strong>{bill_no}</strong> as the payment reference so we can match your payment quickly.</p>
+    <p class="note">Thank you for your business. If you have any questions about this invoice, please contact us at {support_email} or call us on {support_phone}.</p>
+
+    <div class="footer">
+      <p>© {year} {company_name}. All rights reserved.</p>
+      <p>Generated on {generated_on}</p>
+    </div>
+  </div>
+</body>
+</html>

@@ -163,7 +163,24 @@ public class AlertService {
                 }
             });
             Message msg = new MimeMessage(session);
-            msg.setFrom(new InternetAddress(smtpUser, fromName));
+            String displayFrom = fromName;
+            String alertEm = "";
+            try {
+                var company = AppServices.company().getCompany();
+                alertEm = company.resolveAlertEmail();
+                if (company.getCompanyName() != null && !company.getCompanyName().isBlank()) {
+                    displayFrom = company.getCompanyName();
+                }
+            } catch (Exception ignored) {}
+            // Gmail/SMTP auth requires From = authenticated username; alert email used as Reply-To when different
+            String fromAddr = smtpUser;
+            if (alertEm != null && !alertEm.isBlank() && alertEm.equalsIgnoreCase(smtpUser)) {
+                fromAddr = alertEm;
+            }
+            msg.setFrom(new InternetAddress(fromAddr, displayFrom));
+            if (alertEm != null && !alertEm.isBlank() && !alertEm.equalsIgnoreCase(fromAddr)) {
+                msg.setReplyTo(new Address[]{ new InternetAddress(alertEm, displayFrom) });
+            }
             msg.setRecipient(Message.RecipientType.TO, new InternetAddress(toEmail, toName));
             msg.setSubject(subject);
             msg.setText(body);

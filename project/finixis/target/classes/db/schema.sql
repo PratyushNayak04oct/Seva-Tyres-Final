@@ -191,7 +191,8 @@ CREATE TABLE IF NOT EXISTS Company_Info (
     upi_id         VARCHAR(100),
     about_text     TEXT,
     support_email  VARCHAR(200),
-    support_phone  VARCHAR(30)
+    support_phone  VARCHAR(30),
+    alert_email    VARCHAR(200)
 );
 
 CREATE TABLE IF NOT EXISTS Company_Member (

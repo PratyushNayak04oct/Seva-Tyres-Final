@@ -422,7 +422,14 @@
 .txn-desc   { -fx-text-fill: -text; -fx-font-weight: 600; }
 .txn-meta   { -fx-text-fill: -text-muted; -fx-font-size: 12px; }
 
-/* ---------- Dialog root (for custom Stage dialogs) ---------- */
+/* Invoice template editor — tall monospace area */
+.invoice-template-area {
+    -fx-pref-row-count: 52;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-font-size: 13px;
+    -fx-pref-height: 980;
+    -fx-min-height: 960;
+}
 .dialog-root {
     -fx-background-color: -bg;
 }

@@ -17,7 +17,7 @@ import java.util.ResourceBundle;
 
 public class CompanyController implements Initializable, PageController {
 
-    @FXML private TextField companyNameField, ownerNameField, emailField, phoneField, dbtPhoneField;
+    @FXML private TextField companyNameField, ownerNameField, emailField, phoneField, dbtPhoneField, alertEmailField;
     @FXML private TextField gstinField, addressField, cityField, stateField, pincodeField;
     @FXML private TextField bankNameField, bankAccountField, bankIfscField, upiIdField;
     @FXML private TextField supportEmailField, supportPhoneField;
@@ -70,6 +70,7 @@ public class CompanyController implements Initializable, PageController {
         ownerNameField.setText(n(c.getOwnerName()));
         emailField.setText(n(c.getEmail()));
         phoneField.setText(n(c.getPhone()));
+        alertEmailField.setText(n(c.getAlertEmail()));
         dbtPhoneField.setText(n(c.getDbtPhone()));
         gstinField.setText(n(c.getGstin()));
         addressField.setText(n(c.getAddress()));
@@ -96,6 +97,7 @@ public class CompanyController implements Initializable, PageController {
             c.setOwnerName(ownerNameField.getText().trim());
             c.setEmail(emailField.getText().trim());
             c.setPhone(phoneField.getText().trim());
+            c.setAlertEmail(alertEmailField.getText().trim());
             c.setDbtPhone(dbtPhoneField.getText().trim());
             c.setGstin(gstinField.getText().trim());
             c.setAddress(addressField.getText().trim());

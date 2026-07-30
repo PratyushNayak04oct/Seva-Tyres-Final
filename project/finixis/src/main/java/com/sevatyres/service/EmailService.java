@@ -211,9 +211,25 @@ public class EmailService {
             });
 
             Message message = new MimeMessage(session);
-            message.setFrom(new InternetAddress(username, fromName));
+            String displayFrom = fromName;
+            String alertEm = "";
+            try {
+                var company = AppServices.company().getCompany();
+                alertEm = company.resolveAlertEmail();
+                if (company.getCompanyName() != null && !company.getCompanyName().isBlank()) {
+                    displayFrom = company.getCompanyName();
+                }
+            } catch (Exception ignored) {}
+            String fromAddr = username;
+            if (alertEm != null && !alertEm.isBlank() && alertEm.equalsIgnoreCase(username)) {
+                fromAddr = alertEm;
+            }
+            message.setFrom(new InternetAddress(fromAddr, displayFrom));
+            if (alertEm != null && !alertEm.isBlank() && !alertEm.equalsIgnoreCase(fromAddr)) {
+                message.setReplyTo(new Address[]{ new InternetAddress(alertEm, displayFrom) });
+            }
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
-            message.setSubject("Transaction summary & credit balance — Seva Tyres");
+            message.setSubject("Transaction summary & credit balance — " + displayFrom);
             message.setContent(buildCreditSaleHtml(customer, sale, items), "text/html; charset=UTF-8");
             Transport.send(message);
             LOG.info("[EmailService] Credit summary sent to " + toEmail);

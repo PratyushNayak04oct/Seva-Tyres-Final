@@ -33,12 +33,6 @@ public final class AppServices {
         company          = new CompanyService();
         alerts.ensureCreditPaymentCampaign();
         email.startReminderScheduler(customers, transactions);
-        // Seed default invoice template if missing
-        try {
-            if (company.getInvoiceTemplate() == null || company.getInvoiceTemplate().isBlank()) {
-                company.saveInvoiceTemplate(CompanyService.defaultInvoiceTemplate());
-            }
-        } catch (Exception ignored) {}
     }
 
     public static CustomerService       customers()        { return customers; }

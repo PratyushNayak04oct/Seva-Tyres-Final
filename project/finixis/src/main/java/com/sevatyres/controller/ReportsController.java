@@ -15,21 +15,23 @@ import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.awt.Desktop;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.net.URL;
 import java.util.List;
 import java.util.ResourceBundle;
 
 /**
- * Reports page — summary stats, editable invoice template, generated files.
+ * Reports page — summary stats, HTML invoice template upload, generated files.
  */
 public class ReportsController implements Initializable, PageController {
 
     @FXML private Label totalCredits, totalDebits, netLabel;
-    @FXML private TextArea invoiceTemplateArea;
     @FXML private Label templateStatusLabel;
     @FXML private VBox filesBox;
 
@@ -51,35 +53,71 @@ public class ReportsController implements Initializable, PageController {
         netLabel.setText(UiUtil.signedMoney(net));
         netLabel.getStyleClass().add(net >= 0 ? "stat-positive" : "stat-negative");
 
-        if (invoiceTemplateArea != null) {
-            invoiceTemplateArea.setText(AppServices.company().getInvoiceTemplate());
-        }
+        refreshTemplateStatus();
         renderFiles();
     }
 
-    @FXML private void onSaveTemplate() {
-        String text = invoiceTemplateArea.getText();
-        if (text == null || text.isBlank()) {
-            Dialogs.info("Template Required", "Invoice template cannot be empty.");
-            return;
+    private void refreshTemplateStatus() {
+        if (templateStatusLabel == null) return;
+        if (AppServices.company().hasCustomInvoiceHtmlTemplate()) {
+            templateStatusLabel.setText("Custom HTML template is active (stored in database). Upload a new file to replace it.");
+        } else {
+            templateStatusLabel.setText("Using built-in professional HTML template. Download it, edit, then upload.");
         }
-        AppServices.company().saveInvoiceTemplate(text);
-        if (templateStatusLabel != null) {
-            templateStatusLabel.setText("Template saved — new invoices will use this layout.");
+    }
+
+    @FXML private void onExportTemplate() {
+        try {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("Save Default Invoice Template");
+            chooser.setInitialFileName("invoice-template.html");
+            chooser.getExtensionFilters().add(
+                    new FileChooser.ExtensionFilter("HTML Template", "*.html", "*.htm"));
+            File dest = chooser.showSaveDialog(App.getScene().getWindow());
+            if (dest == null) return;
+            String html = CompanyService.loadBuiltinInvoiceHtmlTemplate();
+            Files.writeString(dest.toPath(), html, StandardCharsets.UTF_8);
+            templateStatusLabel.setText("Saved editable template to: " + dest.getAbsolutePath());
+            UiUtil.toast(App.getRoot(), "Template downloaded — edit then upload");
+            if (Desktop.isDesktopSupported()) Desktop.getDesktop().open(dest.getParentFile());
+        } catch (Exception ex) {
+            Dialogs.info("Export Failed", ex.getMessage());
         }
-        UiUtil.toast(App.getRoot(), "Invoice template saved");
+    }
+
+    @FXML private void onUploadTemplate() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Upload Invoice Template (HTML)");
+        chooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("HTML Template", "*.html", "*.htm"));
+        File chosen = chooser.showOpenDialog(App.getScene().getWindow());
+        if (chosen == null) return;
+        try {
+            String html = Files.readString(chosen.toPath(), StandardCharsets.UTF_8);
+            if (html.isBlank() || !html.toLowerCase().contains("<html")) {
+                Dialogs.info("Invalid Template",
+                        "Please upload a valid HTML invoice template file.");
+                return;
+            }
+            if (!html.contains("{bill_no}") && !html.contains("{items_html}")) {
+                if (!Dialogs.confirm("Missing Placeholders",
+                        "This file may be missing required tags like {bill_no} or {items_html}.",
+                        "Upload anyway?")) return;
+            }
+            AppServices.company().saveInvoiceHtmlTemplate(html);
+            refreshTemplateStatus();
+            UiUtil.toast(App.getRoot(), "Invoice template uploaded");
+        } catch (Exception ex) {
+            Dialogs.info("Upload Failed", ex.getMessage());
+        }
     }
 
     @FXML private void onResetTemplate() {
-        if (!Dialogs.confirm("Reset Template", "Restore the default invoice template?",
-                "Your current edits will be replaced.")) return;
-        String def = CompanyService.defaultInvoiceTemplate();
-        invoiceTemplateArea.setText(def);
-        AppServices.company().saveInvoiceTemplate(def);
-        if (templateStatusLabel != null) {
-            templateStatusLabel.setText("Default template restored.");
-        }
-        UiUtil.toast(App.getRoot(), "Default invoice template restored");
+        if (!Dialogs.confirm("Reset Template", "Switch back to the built-in professional template?",
+                "Your uploaded custom template will be removed from the app.")) return;
+        AppServices.company().clearInvoiceHtmlTemplate();
+        refreshTemplateStatus();
+        UiUtil.toast(App.getRoot(), "Built-in invoice template restored");
     }
 
     private void renderFiles() {
@@ -87,7 +125,7 @@ public class ReportsController implements Initializable, PageController {
         List<GeneratedFile> files = reportService.getAll();
 
         if (files.isEmpty()) {
-            Label empty = new Label("No files generated yet. Use Transactions \u2192 Generate Report / Invoice.");
+            Label empty = new Label("No files generated yet. Use Transactions → Invoice / Generate Report.");
             empty.getStyleClass().addAll("text-muted");
             empty.setStyle("-fx-padding: 12 0;");
             filesBox.getChildren().add(empty);
@@ -108,15 +146,15 @@ public class ReportsController implements Initializable, PageController {
         row.setAlignment(Pos.CENTER_LEFT);
         row.getStyleClass().add("file-row");
 
-        boolean isPdf = gf.getFormat().equals("PDF");
-        FontIcon icon = new FontIcon(isPdf ? "fas-file-pdf" : "fas-file-excel");
+        boolean isPdf = "PDF".equalsIgnoreCase(gf.getFormat());
+        FontIcon icon = new FontIcon(isPdf ? "fas-file-pdf" : "fas-file-code");
         icon.getStyleClass().add(isPdf ? "file-icon-pdf" : "file-icon-excel");
 
         VBox info = new VBox(2);
         Label name = new Label(gf.getName());
         name.getStyleClass().add("font-bold");
-        Label meta = new Label(gf.getFileType() + "  \u00b7  " + gf.getFormat()
-                + "  \u00b7  " + gf.getTimestampDisplay());
+        Label meta = new Label(gf.getFileType() + "  ·  " + gf.getFormat()
+                + "  ·  " + gf.getTimestampDisplay());
         meta.getStyleClass().addAll("text-muted", "text-sm");
         info.getChildren().addAll(name, meta);
         HBox.setHgrow(info, Priority.ALWAYS);
@@ -130,9 +168,9 @@ public class ReportsController implements Initializable, PageController {
             statusChip.getStyleClass().addAll("chip", "chip-error");
         }
 
-        Button dlBtn = new Button("Download");
+        Button dlBtn = new Button("Open");
         dlBtn.getStyleClass().addAll("btn", "btn-secondary");
-        dlBtn.setGraphic(new FontIcon("fas-download"));
+        dlBtn.setGraphic(new FontIcon("fas-external-link-alt"));
         dlBtn.setDisable(!gf.isAvailable());
         dlBtn.setOnAction(e -> openFile(gf.getFile()));
 
