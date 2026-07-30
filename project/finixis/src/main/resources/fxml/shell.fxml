@@ -46,6 +46,9 @@
             <Button fx:id="navAlerts" text="Alerts" styleClass="menu-item" onAction="#goAlerts" maxWidth="1.7976931348623157E308" alignment="BASELINE_LEFT">
                 <graphic><FontIcon iconLiteral="fas-bell"/></graphic>
             </Button>
+            <Button fx:id="navCompany" text="Company" styleClass="menu-item" onAction="#goCompany" maxWidth="1.7976931348623157E308" alignment="BASELINE_LEFT">
+                <graphic><FontIcon iconLiteral="fas-building"/></graphic>
+            </Button>
         </VBox>
 
         <!-- Page content host -->

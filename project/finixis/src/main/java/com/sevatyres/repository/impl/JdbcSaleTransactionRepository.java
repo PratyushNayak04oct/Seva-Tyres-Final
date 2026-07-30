@@ -62,9 +62,10 @@ public class JdbcSaleTransactionRepository implements SaleTransactionRepository 
     public SaleTransaction save(SaleTransaction tx) {
         String sql = "INSERT INTO Sale_Transaction("
                 + "bill_no,sale_date,particulars,brand,quantity,unit_price,inventory_item_id,"
-                + "phone_pe,account_transfer,card_swipe,bajaj_finance,cash,cheque,credit_amount,total,"
+                + "phone_pe,account_transfer,card_swipe,bajaj_finance,cash,cheque,credit_amount,"
+                + "subtotal,tax_amount,tax_label,total,"
                 + "customer_id,customer_name,customer_email,customer_phone,customer_address"
-                + ") VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                + ") VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         try (Connection con = DatabaseConfig.get();
              PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             setParams(ps, tx);
@@ -80,13 +81,14 @@ public class JdbcSaleTransactionRepository implements SaleTransactionRepository 
     public void update(SaleTransaction tx) {
         String sql = "UPDATE Sale_Transaction SET "
                 + "bill_no=?,sale_date=?,particulars=?,brand=?,quantity=?,unit_price=?,inventory_item_id=?,"
-                + "phone_pe=?,account_transfer=?,card_swipe=?,bajaj_finance=?,cash=?,cheque=?,credit_amount=?,total=?,"
+                + "phone_pe=?,account_transfer=?,card_swipe=?,bajaj_finance=?,cash=?,cheque=?,credit_amount=?,"
+                + "subtotal=?,tax_amount=?,tax_label=?,total=?,"
                 + "customer_id=?,customer_name=?,customer_email=?,customer_phone=?,customer_address=? "
                 + "WHERE sale_id=?";
         try (Connection con = DatabaseConfig.get();
              PreparedStatement ps = con.prepareStatement(sql)) {
             setParams(ps, tx);
-            ps.setInt(21, tx.getId());
+            ps.setInt(24, tx.getId());
             ps.executeUpdate();
         } catch (SQLException e) { throw new RuntimeException(e); }
     }
@@ -173,13 +175,16 @@ public class JdbcSaleTransactionRepository implements SaleTransactionRepository 
         ps.setDouble(12, tx.getCash());
         ps.setDouble(13, tx.getCheque());
         ps.setDouble(14, tx.getCreditAmount());
-        ps.setDouble(15, tx.getTotal());
-        if (tx.getCustomerId() != null) ps.setInt(16, tx.getCustomerId());
-        else ps.setNull(16, Types.INTEGER);
-        ps.setString(17, tx.getCustomerName());
-        ps.setString(18, tx.getCustomerEmail());
-        ps.setString(19, tx.getCustomerPhone());
-        ps.setString(20, tx.getCustomerAddress());
+        ps.setDouble(15, tx.getSubtotal());
+        ps.setDouble(16, tx.getTaxAmount());
+        ps.setString(17, tx.getTaxLabel());
+        ps.setDouble(18, tx.getTotal());
+        if (tx.getCustomerId() != null) ps.setInt(19, tx.getCustomerId());
+        else ps.setNull(19, Types.INTEGER);
+        ps.setString(20, tx.getCustomerName());
+        ps.setString(21, tx.getCustomerEmail());
+        ps.setString(22, tx.getCustomerPhone());
+        ps.setString(23, tx.getCustomerAddress());
     }
 
     private SaleTransaction map(ResultSet rs) throws SQLException {
@@ -203,7 +208,14 @@ public class JdbcSaleTransactionRepository implements SaleTransactionRepository 
         tx.setCash(rs.getDouble("cash"));
         tx.setCheque(rs.getDouble("cheque"));
         tx.setCreditAmount(rs.getDouble("credit_amount"));
+        try { tx.setSubtotal(rs.getDouble("subtotal")); } catch (SQLException ignored) {}
+        try { tx.setTaxAmount(rs.getDouble("tax_amount")); } catch (SQLException ignored) {}
+        try { tx.setTaxLabel(rs.getString("tax_label")); } catch (SQLException ignored) {}
         tx.setTotal(rs.getDouble("total"));
+        // Backfill subtotal for older rows
+        if (tx.getSubtotal() <= 0 && tx.getTotal() > 0) {
+            tx.setSubtotal(Math.max(0, tx.getTotal() - tx.getTaxAmount()));
+        }
         int custId = rs.getInt("customer_id");
         if (!rs.wasNull()) tx.setCustomerId(custId);
         tx.setCustomerName(rs.getString("customer_name"));
@@ -211,5 +223,52 @@ public class JdbcSaleTransactionRepository implements SaleTransactionRepository 
         tx.setCustomerPhone(rs.getString("customer_phone"));
         tx.setCustomerAddress(rs.getString("customer_address"));
         return tx;
+    }
+
+    public void saveTaxes(int saleId, List<com.sevatyres.model.SaleTaxLine> taxes) {
+        try (Connection con = DatabaseConfig.get();
+             PreparedStatement del = con.prepareStatement(
+                     "DELETE FROM Sale_Transaction_Tax WHERE sale_id=?")) {
+            del.setInt(1, saleId);
+            del.executeUpdate();
+        } catch (SQLException e) { throw new RuntimeException(e); }
+        if (taxes == null || taxes.isEmpty()) return;
+        String sql = "INSERT INTO Sale_Transaction_Tax(sale_id,tax_id,tax_name,tax_rate,tax_amount) VALUES(?,?,?,?,?)";
+        try (Connection con = DatabaseConfig.get();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            for (com.sevatyres.model.SaleTaxLine line : taxes) {
+                ps.setInt(1, saleId);
+                if (line.getTaxId() != null) ps.setInt(2, line.getTaxId());
+                else ps.setNull(2, Types.INTEGER);
+                ps.setString(3, line.getTaxName());
+                ps.setDouble(4, line.getTaxRate());
+                ps.setDouble(5, line.getTaxAmount());
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        } catch (SQLException e) { throw new RuntimeException(e); }
+    }
+
+    public List<com.sevatyres.model.SaleTaxLine> findTaxesBySaleId(int saleId) {
+        List<com.sevatyres.model.SaleTaxLine> list = new ArrayList<>();
+        String sql = "SELECT * FROM Sale_Transaction_Tax WHERE sale_id=? ORDER BY sale_tax_id";
+        try (Connection con = DatabaseConfig.get();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, saleId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    com.sevatyres.model.SaleTaxLine line = new com.sevatyres.model.SaleTaxLine();
+                    line.setSaleTaxId(rs.getInt("sale_tax_id"));
+                    line.setSaleId(rs.getInt("sale_id"));
+                    int tid = rs.getInt("tax_id");
+                    if (!rs.wasNull()) line.setTaxId(tid);
+                    line.setTaxName(rs.getString("tax_name"));
+                    line.setTaxRate(rs.getDouble("tax_rate"));
+                    line.setTaxAmount(rs.getDouble("tax_amount"));
+                    list.add(line);
+                }
+            }
+        } catch (SQLException e) { throw new RuntimeException(e); }
+        return list;
     }
 }

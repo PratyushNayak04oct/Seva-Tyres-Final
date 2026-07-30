@@ -14,6 +14,8 @@ public final class AppServices {
     private static ReportService          reports;
     private static EmailService           email;
     private static AlertService           alerts;
+    private static TaxService             taxes;
+    private static CompanyService         company;
 
     private AppServices() {}
 
@@ -27,8 +29,16 @@ public final class AppServices {
         reports          = new ReportService();
         email            = new EmailService();
         alerts           = new AlertService();
+        taxes            = new TaxService();
+        company          = new CompanyService();
         alerts.ensureCreditPaymentCampaign();
         email.startReminderScheduler(customers, transactions);
+        // Seed default invoice template if missing
+        try {
+            if (company.getInvoiceTemplate() == null || company.getInvoiceTemplate().isBlank()) {
+                company.saveInvoiceTemplate(CompanyService.defaultInvoiceTemplate());
+            }
+        } catch (Exception ignored) {}
     }
 
     public static CustomerService       customers()        { return customers; }
@@ -38,6 +48,8 @@ public final class AppServices {
     public static ReportService         reports()          { return reports; }
     public static EmailService          email()            { return email; }
     public static AlertService          alerts()           { return alerts; }
+    public static TaxService            taxes()            { return taxes; }
+    public static CompanyService        company()          { return company; }
 
     public static void shutdown() {
         if (email != null) email.shutdown();

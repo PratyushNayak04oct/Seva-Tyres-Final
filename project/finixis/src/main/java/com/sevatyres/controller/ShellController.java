@@ -18,7 +18,7 @@ public class ShellController implements Initializable {
 
     @FXML private VBox sideMenu;
     @FXML private StackPane contentHost;
-    @FXML private Button navHome, navTransactions, navAccounts, navCredit, navInventory, navReports, navAlerts;
+    @FXML private Button navHome, navTransactions, navAccounts, navCredit, navInventory, navReports, navAlerts, navCompany;
     @FXML private Button themeToggleBtn;
     @FXML private Button refreshBtn;
 
@@ -77,6 +77,7 @@ public class ShellController implements Initializable {
     @FXML private void goInventory()     { setActiveNav(navInventory);     loadPage("inventory"); }
     @FXML private void goReports()       { setActiveNav(navReports);       loadPage("reports"); }
     @FXML private void goAlerts()        { setActiveNav(navAlerts);        loadPage("alerts"); }
+    @FXML private void goCompany()       { setActiveNav(navCompany);       loadPage("company"); }
 
     private void setActiveNav(Button nav) {
         if (currentNav != null) currentNav.getStyleClass().remove("menu-active");
@@ -93,6 +94,7 @@ public class ShellController implements Initializable {
             case "inventory"    -> navInventory;
             case "reports"      -> navReports;
             case "alerts"       -> navAlerts;
+            case "company"      -> navCompany;
             default             -> null;
         };
         setActiveNav(target);

@@ -433,10 +433,33 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
 
         Label itemTotalLabel = new Label("\u20b90.00");
         itemTotalLabel.setStyle("-fx-font-weight:700; -fx-font-size:18px; -fx-text-fill: -primary-600;");
+        Label taxTotalLabel = new Label("\u20b90.00");
+        taxTotalLabel.setStyle("-fx-font-weight:600; -fx-font-size:15px;");
+        Label grandTotalLabel = new Label("\u20b90.00");
+        grandTotalLabel.setStyle("-fx-font-weight:700; -fx-font-size:18px; -fx-text-fill: -primary-600;");
         Label paidTotalLabel = new Label("\u20b90.00");
         paidTotalLabel.setStyle("-fx-font-weight:600; -fx-font-size:15px;");
         Label remainingLabel = new Label("\u20b90.00");
         remainingLabel.setStyle("-fx-font-weight:700; -fx-font-size:16px; -fx-text-fill: #38a169;");
+        Label taxInfoLabel = new Label("No tax selected");
+        taxInfoLabel.setStyle("-fx-font-size:11px; -fx-text-fill: -text-muted;");
+
+        // Tax selection (multi)
+        List<Tax> activeTaxes = AppServices.taxes().getActive();
+        List<CheckBox> taxChecks = new ArrayList<>();
+        VBox taxChecksBox = new VBox(6);
+        for (Tax tax : activeTaxes) {
+            CheckBox cb = new CheckBox(tax.getDisplayLabel());
+            cb.setUserData(tax);
+            taxChecks.add(cb);
+            taxChecksBox.getChildren().add(cb);
+        }
+        if (taxChecks.isEmpty()) {
+            Label none = new Label("No taxes defined yet. Use \"Add New Tax\" on the Transactions page.");
+            none.setWrapText(true);
+            none.setStyle("-fx-font-size:12px; -fx-text-fill: -text-muted;");
+            taxChecksBox.getChildren().add(none);
+        }
 
         class ItemRow {
             final TextField productField = styledField("Product name or scan barcode\u2026");
@@ -482,8 +505,18 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
             double paid = parseDouble(phonePeField) + parseDouble(acTransferField)
                     + parseDouble(cardSwipeField) + parseDouble(bajajField)
                     + parseDouble(cashField) + parseDouble(chequeField);
-            double remaining = Math.max(0, total - paid);
+            List<Tax> selected = new ArrayList<>();
+            for (CheckBox cb : taxChecks) {
+                if (cb.isSelected() && cb.getUserData() instanceof Tax t) selected.add(t);
+            }
+            double taxAmt = com.sevatyres.service.TaxService.computeTaxAmount(total, selected);
+            String taxLbl = com.sevatyres.service.TaxService.buildTaxLabel(selected);
+            double grand = total + taxAmt;
+            double remaining = Math.max(0, grand - paid);
             itemTotalLabel.setText(UiUtil.money(total));
+            taxTotalLabel.setText(UiUtil.money(taxAmt));
+            grandTotalLabel.setText(UiUtil.money(grand));
+            taxInfoLabel.setText(taxLbl);
             paidTotalLabel.setText(UiUtil.money(paid));
             remainingLabel.setText(UiUtil.money(remaining));
             remainingLabel.setStyle(remaining > 0.009
@@ -592,6 +625,9 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
                 bajajField, cashField, chequeField}) {
             tf.textProperty().addListener((o, a, b) -> updateTotalsRef[0].run());
         }
+        for (CheckBox cb : taxChecks) {
+            cb.selectedProperty().addListener((o, a, b) -> updateTotalsRef[0].run());
+        }
 
         Label custHeader = new Label("CUSTOMER DETAILS (required when amount is on credit)");
         custHeader.setStyle("-fx-font-size:11px; -fx-font-weight:700; -fx-text-fill: -neutral-400;");
@@ -638,8 +674,12 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
 
         Label itemsHeader = new Label("ITEMS");
         itemsHeader.setStyle("-fx-font-size:11px; -fx-font-weight:700; -fx-text-fill: -neutral-400;");
+        Label taxHeader = new Label("TAXES (select all that apply)");
+        taxHeader.setStyle("-fx-font-size:11px; -fx-font-weight:700; -fx-text-fill: -neutral-400;");
         Label payHeader = new Label("PAYMENT METHODS");
         payHeader.setStyle("-fx-font-size:11px; -fx-font-weight:700; -fx-text-fill: -neutral-400;");
+
+        VBox taxForm = new VBox(8, taxHeader, taxChecksBox, taxInfoLabel);
 
         VBox payForm = new VBox(10, payHeader,
                 labeledField("PhonePe (UPI) \u20b9", phonePeField),
@@ -649,8 +689,10 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
                 labeledField("Cash \u20b9", cashField),
                 labeledField("Cheque \u20b9", chequeField));
 
-        HBox summaryRow = new HBox(24,
-                new VBox(4, new Label("Item Total") {{ setStyle("-fx-font-size:11px;"); }}, itemTotalLabel),
+        HBox summaryRow = new HBox(18,
+                new VBox(4, new Label("Subtotal") {{ setStyle("-fx-font-size:11px;"); }}, itemTotalLabel),
+                new VBox(4, new Label("Tax") {{ setStyle("-fx-font-size:11px;"); }}, taxTotalLabel),
+                new VBox(4, new Label("Grand Total") {{ setStyle("-fx-font-size:11px;"); }}, grandTotalLabel),
                 new VBox(4, new Label("Paid") {{ setStyle("-fx-font-size:11px;"); }}, paidTotalLabel),
                 new VBox(4, new Label("Remaining (Credit)") {{ setStyle("-fx-font-size:11px;"); }}, remainingLabel));
         summaryRow.setAlignment(Pos.CENTER_LEFT);
@@ -662,6 +704,8 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
                 labeledField("Bill No", billNoField),
                 new Separator(),
                 itemsHeader, itemsBox, addMoreBtn,
+                new Separator(),
+                taxForm,
                 new Separator(),
                 payForm,
                 new Separator(),
@@ -713,7 +757,14 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
                     + parseDouble(cardSwipeField) + parseDouble(bajajField)
                     + parseDouble(cashField) + parseDouble(chequeField);
             double itemsTotal = lineItems.stream().mapToDouble(SaleTransactionItem::getLineTotal).sum();
-            double remaining = Math.max(0, itemsTotal - paid);
+            List<Tax> selectedTaxes = new ArrayList<>();
+            for (CheckBox cb : taxChecks) {
+                if (cb.isSelected() && cb.getUserData() instanceof Tax t) selectedTaxes.add(t);
+            }
+            double taxAmt = com.sevatyres.service.TaxService.computeTaxAmount(itemsTotal, selectedTaxes);
+            String taxLbl = com.sevatyres.service.TaxService.buildTaxLabel(selectedTaxes);
+            double grandTotal = itemsTotal + taxAmt;
+            double remaining = Math.max(0, grandTotal - paid);
 
             String custName = custNameField.getText().trim();
             if (remaining > 0.009 && custName.isEmpty()) {
@@ -730,6 +781,16 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
             tx.setBajajFinance(parseDouble(bajajField));
             tx.setCash(parseDouble(cashField));
             tx.setCheque(parseDouble(chequeField));
+            tx.setSubtotal(itemsTotal);
+            tx.setTaxAmount(taxAmt);
+            tx.setTaxLabel(taxLbl);
+            tx.setTotal(grandTotal);
+
+            List<SaleTaxLine> taxLines = new ArrayList<>();
+            for (Tax t : selectedTaxes) {
+                double lineTax = Math.round(itemsTotal * (t.getRate() / 100.0) * 100.0) / 100.0;
+                taxLines.add(new SaleTaxLine(t.getId(), t.getName(), t.getRate(), lineTax));
+            }
 
             SaleTransactionItem first = lineItems.get(0);
             tx.setParticulars(first.getItemName() + (lineItems.size() > 1
@@ -760,7 +821,7 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
                 tx.setCustomerAddress(custAddrField.getText().trim());
             }
 
-            SaleTransaction saved = AppServices.saleTransactions().save(tx, lineItems);
+            SaleTransaction saved = AppServices.saleTransactions().save(tx, lineItems, taxLines);
             stage.close();
             if (onSaved != null) onSaved.accept(saved);
         });
@@ -789,6 +850,10 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
                 labeledField("Bajaj Finance",  readonlyField(UiUtil.money(t.getBajajFinance()))),
                 labeledField("Cash",           readonlyField(UiUtil.money(t.getCash()))),
                 labeledField("Cheque",         readonlyField(UiUtil.money(t.getCheque()))),
+                labeledField("Subtotal",       readonlyField(UiUtil.money(t.getSubtotal() > 0 ? t.getSubtotal() : t.getItemTotal()))),
+                labeledField("Tax",            readonlyField(
+                        (t.getTaxLabel() != null ? t.getTaxLabel() + " — " : "")
+                                + UiUtil.money(t.getTaxAmount()))),
                 labeledField("Credit",         readonlyField(UiUtil.money(t.getCreditAmount()))),
                 labeledField("Total",          readonlyField(UiUtil.money(t.getTotal()))));
 
@@ -1418,6 +1483,136 @@ public static void showViewTransaction(Transaction t) {
         stage.setScene(scene);
         stage.sizeToScene();
         stage.showAndWait();
+    }
+
+    // ─── Tax management ───────────────────────────────────────────────────────
+
+    public static void showManageTaxes(Runnable onChanged) {
+        Stage stage = buildDialogStage("Manage Taxes", 560, 720);
+        VBox content = contentVBox();
+        Label title = dialogTitle("Taxes");
+        Label sub = dialogSub("Create taxes that can be selected on each new transaction. Total includes selected taxes.");
+
+        VBox listBox = new VBox(8);
+        Runnable[] refreshRef = new Runnable[1];
+        refreshRef[0] = () -> {
+            listBox.getChildren().clear();
+            List<Tax> all = AppServices.taxes().getAll();
+            if (all.isEmpty()) {
+                Label empty = new Label("No taxes yet. Add GST / CGST / SGST / etc. below.");
+                empty.getStyleClass().add("text-muted");
+                listBox.getChildren().add(empty);
+                return;
+            }
+            for (Tax tax : all) {
+                Label info = new Label(tax.getDisplayLabel()
+                        + (tax.isActive() ? "" : "  [inactive]")
+                        + (tax.getDescription() != null && !tax.getDescription().isBlank()
+                        ? "  — " + tax.getDescription() : ""));
+                info.setWrapText(true);
+                Button editBtn = new Button("Edit");
+                editBtn.getStyleClass().addAll("btn", "btn-secondary");
+                Button delBtn = new Button("Delete");
+                delBtn.getStyleClass().addAll("btn", "btn-danger");
+                CheckBox activeCb = new CheckBox("Active");
+                activeCb.setSelected(tax.isActive());
+                activeCb.setOnAction(ev -> {
+                    tax.setActive(activeCb.isSelected());
+                    AppServices.taxes().save(tax);
+                    if (onChanged != null) onChanged.run();
+                });
+                editBtn.setOnAction(ev -> {
+                    showAddOrEditTax(tax, () -> {
+                        refreshRef[0].run();
+                        if (onChanged != null) onChanged.run();
+                    });
+                });
+                delBtn.setOnAction(ev -> {
+                    if (!confirm("Delete Tax", "Delete " + tax.getName() + "?",
+                            "Existing invoices keep their tax snapshot.")) return;
+                    AppServices.taxes().delete(tax.getId());
+                    refreshRef[0].run();
+                    if (onChanged != null) onChanged.run();
+                });
+                HBox row = new HBox(10, info, new Region(), activeCb, editBtn, delBtn);
+                HBox.setHgrow(row.getChildren().get(1), Priority.ALWAYS);
+                row.setAlignment(Pos.CENTER_LEFT);
+                row.setStyle("-fx-background-color: -surface-2; -fx-padding: 10 12; -fx-background-radius: 8;");
+                listBox.getChildren().add(row);
+            }
+        };
+        refreshRef[0].run();
+
+        Button addBtn = new Button("Add New Tax");
+        addBtn.getStyleClass().add("btn");
+        addBtn.setOnAction(ev -> showAddOrEditTax(null, () -> {
+            refreshRef[0].run();
+            if (onChanged != null) onChanged.run();
+        }));
+
+        Button closeBtn = new Button("Close");
+        closeBtn.getStyleClass().addAll("btn", "btn-secondary");
+        closeBtn.setOnAction(e -> stage.close());
+
+        content.getChildren().addAll(new VBox(4, title, sub), new Separator(), listBox, addBtn);
+        presentDialog(stage, content, buttonRow(closeBtn), 560);
+    }
+
+    public static void showAddOrEditTax(Tax existing, Runnable onSaved) {
+        boolean isNew = existing == null;
+        Stage stage = buildDialogStage(isNew ? "Add New Tax" : "Edit Tax");
+        VBox content = contentVBox();
+        Label title = dialogTitle(isNew ? "Add New Tax" : "Edit Tax");
+
+        TextField nameField = styledField("e.g. GST / CGST / SGST");
+        TextField rateField = styledField("18.00");
+        TextField descField = styledField("Optional description");
+        CheckBox activeCb = new CheckBox("Active (available on new transactions)");
+        activeCb.setSelected(true);
+        if (!isNew) {
+            nameField.setText(existing.getName());
+            rateField.setText(String.format("%.2f", existing.getRate()));
+            descField.setText(existing.getDescription() != null ? existing.getDescription() : "");
+            activeCb.setSelected(existing.isActive());
+        }
+
+        Label err = errLabel();
+        content.getChildren().addAll(title, new Separator(),
+                labeledField("Tax Name *", nameField),
+                labeledField("Rate (%) *", rateField),
+                labeledField("Description", descField),
+                activeCb, err);
+
+        Button cancelBtn = new Button("Cancel");
+        cancelBtn.getStyleClass().addAll("btn", "btn-secondary");
+        Button saveBtn = new Button(isNew ? "Create Tax" : "Save");
+        saveBtn.getStyleClass().add("btn");
+        cancelBtn.setOnAction(e -> stage.close());
+        saveBtn.setOnAction(e -> {
+            String name = nameField.getText().trim();
+            if (name.isEmpty()) { err.setText("Tax name is required."); return; }
+            double rate;
+            try {
+                rate = Double.parseDouble(rateField.getText().trim().replace(",", ""));
+                if (rate < 0) throw new NumberFormatException();
+            } catch (NumberFormatException ex) {
+                err.setText("Enter a valid tax rate (e.g. 18 or 9).");
+                return;
+            }
+            Tax tax = isNew ? new Tax() : existing;
+            tax.setName(name);
+            tax.setRate(rate);
+            tax.setDescription(descField.getText().trim());
+            tax.setActive(activeCb.isSelected());
+            try {
+                AppServices.taxes().save(tax);
+                stage.close();
+                if (onSaved != null) onSaved.run();
+            } catch (Exception ex) {
+                err.setText(ex.getMessage());
+            }
+        });
+        presentDialog(stage, content, buttonRow(cancelBtn, saveBtn));
     }
 
     private static Stage buildDialogStage(String title) {

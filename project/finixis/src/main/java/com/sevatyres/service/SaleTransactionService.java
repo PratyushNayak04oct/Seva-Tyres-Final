@@ -1,6 +1,7 @@
 package com.sevatyres.service;
 
 import com.sevatyres.model.Customer;
+import com.sevatyres.model.SaleTaxLine;
 import com.sevatyres.model.SaleTransaction;
 import com.sevatyres.model.SaleTransactionItem;
 import com.sevatyres.repository.SaleTransactionRepository;
@@ -32,35 +33,43 @@ public class SaleTransactionService {
         return ((JdbcSaleTransactionRepository) repo).findItemsBySaleId(saleId);
     }
 
-    /**
-     * Saves a single-item sale transaction, then:
-     *  1. Deducts stock from Inventory if an inventory item was linked.
-     *  2. Creates a Transaction_Credit entry (NOT Debit) if there is an unpaid balance.
-     */
+    public List<SaleTaxLine> getTaxes(int saleId) {
+        return ((JdbcSaleTransactionRepository) repo).findTaxesBySaleId(saleId);
+    }
+
     public SaleTransaction save(SaleTransaction tx) {
-        return save(tx, List.of());
+        return save(tx, List.of(), List.of());
+    }
+
+    public SaleTransaction save(SaleTransaction tx, List<SaleTransactionItem> items) {
+        return save(tx, items, List.of());
     }
 
     /**
-     * Saves a multi-item sale transaction.
-     *  1. Computes total from items (or falls back to unit_price × quantity).
-     *  2. Deducts stock for each linked inventory item.
-     *  3. Creates a Transaction_Credit entry if there is an unpaid balance.
+     * Saves a multi-item sale with optional applied taxes.
+     * Grand total = item subtotal + tax amount. Credit = total − paid.
      */
-    public SaleTransaction save(SaleTransaction tx, List<SaleTransactionItem> items) {
+    public SaleTransaction save(SaleTransaction tx, List<SaleTransactionItem> items,
+                                List<SaleTaxLine> taxLines) {
+        if (items == null) items = List.of();
+        if (taxLines == null) taxLines = List.of();
         if (tx.getBillNo() == null || tx.getBillNo().isBlank()) {
             tx.setBillNo("B" + System.currentTimeMillis() % 100000);
         }
 
-        // If multi-item, override total from items list
         if (!items.isEmpty()) {
             double itemsTotal = items.stream().mapToDouble(SaleTransactionItem::getLineTotal).sum();
             int totalQty = items.stream().mapToInt(SaleTransactionItem::getQuantity).sum();
-            tx.setTotal(itemsTotal);
+            tx.setSubtotal(itemsTotal);
+            double tax = Math.max(0, tx.getTaxAmount());
+            if (tax <= 0 && !taxLines.isEmpty()) {
+                tax = taxLines.stream().mapToDouble(SaleTaxLine::getTaxAmount).sum();
+                tx.setTaxAmount(tax);
+            }
+            tx.setTotal(itemsTotal + tax);
             double paid = tx.getPhonePe() + tx.getAccountTransfer() + tx.getCardSwipe()
                     + tx.getBajajFinance() + tx.getCash() + tx.getCheque();
-            tx.setCreditAmount(Math.max(0, itemsTotal - paid));
-            // Summarise particulars from items
+            tx.setCreditAmount(Math.max(0, tx.getTotal() - paid));
             if (tx.getParticulars() == null || tx.getParticulars().isBlank()) {
                 StringBuilder sb = new StringBuilder();
                 for (SaleTransactionItem it : items) {
@@ -69,26 +78,29 @@ public class SaleTransactionService {
                 }
                 tx.setParticulars(sb.toString());
             }
-            // Header qty = sum of line qtys (must be > 0 for DB check on older DBs)
             tx.setQuantity(Math.max(1, totalQty));
-            // Keep first item unit price for display when single-item; else 0 (total is authoritative)
             if (tx.getUnitPrice() <= 0 && items.size() == 1) {
                 tx.setUnitPrice(items.get(0).getUnitPrice());
             } else if (items.size() > 1) {
                 tx.setUnitPrice(0);
             }
         } else {
-            tx.computeTotal();
+            if (tx.getSubtotal() <= 0 && tx.getUnitPrice() > 0 && tx.getQuantity() > 0) {
+                tx.setSubtotal(tx.getUnitPrice() * tx.getQuantity());
+            }
+            tx.setTotal(tx.getSubtotal() + Math.max(0, tx.getTaxAmount()));
+            double paid = tx.getPhonePe() + tx.getAccountTransfer() + tx.getCardSwipe()
+                    + tx.getBajajFinance() + tx.getCash() + tx.getCheque();
+            tx.setCreditAmount(Math.max(0, tx.getTotal() - paid));
         }
 
         SaleTransaction saved = repo.save(tx);
 
-        // Save line items
         if (!items.isEmpty()) {
             ((JdbcSaleTransactionRepository) repo).saveItems(saved.getId(), items);
         }
+        ((JdbcSaleTransactionRepository) repo).saveTaxes(saved.getId(), taxLines);
 
-        // Deduct inventory stock per item (or single item)
         if (!items.isEmpty()) {
             var invRepo = new com.sevatyres.repository.impl.JdbcInventoryRepository();
             for (SaleTransactionItem it : items) {
@@ -109,7 +121,6 @@ public class SaleTransactionService {
             }
         }
 
-        // Create Transaction_Credit (money customer OWES us) when there is remaining balance
         if (saved.getCreditAmount() > 0.009
                 && saved.getCustomerName() != null && !saved.getCustomerName().isBlank()) {
             try {
@@ -130,13 +141,11 @@ public class SaleTransactionService {
 
                 TransactionService txnService = new TransactionService();
                 String note = "Credit from Bill " + saved.getBillNo() + " — " + saved.getParticulars();
-                // Correctly records as Transaction_Credit (money owed to the business)
                 txnService.addCreditForSale(customer.getId(), customer.getName(), saved.getCreditAmount(), note);
 
-                // Ensure credit reminder campaign exists, then email the customer immediately
                 try {
                     AppServices.alerts().ensureCreditPaymentCampaign();
-                    List<SaleTransactionItem> emailItems = items != null && !items.isEmpty()
+                    List<SaleTransactionItem> emailItems = !items.isEmpty()
                             ? items
                             : ((JdbcSaleTransactionRepository) repo).findItemsBySaleId(saved.getId());
                     AppServices.email().sendCreditSaleSummary(customer, saved, emailItems);
@@ -151,11 +160,6 @@ public class SaleTransactionService {
         return saved;
     }
 
-    /**
-     * Persists payment / credit changes without recomputing from unitPrice×qty.
-     * Callers must set paid amounts, creditAmount and total explicitly
-     * (important for multi-item bills and edit-payment flows).
-     */
     public void update(SaleTransaction tx) {
         repo.update(tx);
     }

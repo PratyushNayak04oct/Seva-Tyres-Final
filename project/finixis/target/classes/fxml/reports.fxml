@@ -3,54 +3,40 @@
 <?import javafx.scene.layout.*?>
 <?import org.kordamp.ikonli.javafx.*?>
 
-<!--
-  Task 8: Monthly breakdown chart removed.
-  Invoice template upload button added.
--->
 <ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.sevatyres.controller.ReportsController"
             fitToWidth="true" fitToHeight="true" styleClass="scroll-pane" hbarPolicy="NEVER">
     <VBox styleClass="page" prefWidth="960" spacing="20">
 
-        <!-- Page header -->
         <HBox alignment="CENTER_LEFT" spacing="14">
             <FontIcon iconLiteral="fas-chart-bar" styleClass="page-title"/>
             <VBox>
                 <Label text="Reports &amp; Summary" styleClass="page-title"/>
-                <Label text="Financial overview and generated file downloads" styleClass="page-subtitle"/>
+                <Label text="Financial overview, invoice template, and generated files" styleClass="page-subtitle"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
-            <ComboBox fx:id="rangeCombo" styleClass="combo"/>
         </HBox>
 
-        <!-- Invoice Template Upload (Task 8) -->
+        <!-- Editable invoice template (no file upload) -->
         <VBox styleClass="card,card-pad" spacing="12">
             <Label text="INVOICE TEMPLATE" styleClass="card-title"/>
-            <HBox spacing="16" alignment="CENTER_LEFT">
-                <VBox spacing="4" HBox.hgrow="ALWAYS">
-                    <Label text="Upload Invoice Template" styleClass="form-label"/>
-                    <Label text="Upload a PDF or DOCX template. Customer data will be filled into the template fields when generating invoices." styleClass="txn-meta" wrapText="true"/>
-                </VBox>
-                <VBox spacing="8" alignment="CENTER">
-                    <Button fx:id="uploadTemplateBtn" text="Upload Template" styleClass="btn,btn-secondary" onAction="#onUploadTemplate">
-                        <graphic><FontIcon iconLiteral="fas-upload"/></graphic>
-                    </Button>
-                    <Label fx:id="templatePathLabel" text="No template uploaded" styleClass="txn-meta"/>
-                </VBox>
-            </HBox>
-            <HBox spacing="16" alignment="CENTER_LEFT">
-                <VBox spacing="4" HBox.hgrow="ALWAYS">
-                    <Label text="Company Name (shown on invoice)" styleClass="form-label"/>
-                    <TextField fx:id="companyNameField" promptText="Seva Tyres" prefWidth="240" styleClass="field"/>
-                </VBox>
-                <VBox spacing="4">
-                    <Label text="Invoice Format" styleClass="form-label"/>
-                    <ComboBox fx:id="invoiceFormatCombo" prefWidth="200" styleClass="combo"/>
-                </VBox>
+            <Label text="Edit the invoice layout below. Placeholders are filled from the database when you generate an invoice from Transactions."
+                   styleClass="txn-meta" wrapText="true"/>
+            <Label text="Placeholders: {company_name} {company_address} {company_contact} {invoice_number} {invoice_date} {due_date} {status} {customer_name} {customer_id} {customer_address} {customer_phone} {customer_email} {items} {subtotal} {tax_label} {tax_amount} {total} {paid} {remaining} {bank_name} {bank_account} {bank_ifsc} {upi_id} {generated_on} {year}"
+                   styleClass="text-sm,text-muted" wrapText="true"/>
+            <TextArea fx:id="invoiceTemplateArea" wrapText="true" prefRowCount="18" prefHeight="320"
+                      styleClass="text-area" promptText="Invoice template text…"/>
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <Button fx:id="saveTemplateBtn" text="Save Template" styleClass="btn" onAction="#onSaveTemplate">
+                    <graphic><FontIcon iconLiteral="fas-save"/></graphic>
+                </Button>
+                <Button fx:id="resetTemplateBtn" text="Reset to Default" styleClass="btn,btn-secondary" onAction="#onResetTemplate">
+                    <graphic><FontIcon iconLiteral="fas-undo"/></graphic>
+                </Button>
+                <Label fx:id="templateStatusLabel" styleClass="text-muted"/>
             </HBox>
         </VBox>
 
-        <!-- Summary stat cards -->
         <HBox spacing="16">
             <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
                 <Label text="Total Credits" styleClass="stat-label"/>
@@ -66,12 +52,11 @@
             </VBox>
         </HBox>
 
-        <!-- Generated Files section -->
         <VBox styleClass="card,card-pad" spacing="12">
             <HBox alignment="CENTER_LEFT" spacing="10">
                 <FontIcon iconLiteral="fas-folder-open" styleClass="icon-sm"/>
                 <Label text="GENERATED FILES" styleClass="card-title" HBox.hgrow="ALWAYS"/>
-                <Label text="Files persist for this session — click Download to open/save." styleClass="txn-meta"/>
+                <Label text="Click Download to open a generated invoice or report." styleClass="txn-meta"/>
             </HBox>
             <VBox fx:id="filesBox" spacing="6"/>
         </VBox>

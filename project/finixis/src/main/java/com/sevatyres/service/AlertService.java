@@ -176,9 +176,13 @@ public class AlertService {
     }
 
     private boolean sendSmsViaEmail(String phone, String name, String body) {
-        // Uses email-to-SMS gateway approach
-        // Without Twilio credentials this is a stub — logs the attempt
-        LOG.info("[Alert] SMS stub — would send to " + phone + ": " + body);
+        // SMS gateway not configured yet. Company DBT number is stored for future use.
+        String dbt = "";
+        try {
+            dbt = AppServices.company().getCompany().getDbtPhone();
+        } catch (Exception ignored) {}
+        LOG.info("[Alert] SMS stub — from DBT number " + (dbt == null || dbt.isBlank() ? "(not set)" : dbt)
+                + " would send to " + phone + ": " + body);
         return false;
     }
 

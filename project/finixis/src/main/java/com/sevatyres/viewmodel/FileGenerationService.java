@@ -1,5 +1,6 @@
 package com.sevatyres.viewmodel;
 
+import com.sevatyres.model.CompanyInfo;
 import com.sevatyres.model.GeneratedFile;
 import com.sevatyres.model.InventoryItem;
 import com.sevatyres.model.Invoice;
@@ -7,6 +8,8 @@ import com.sevatyres.model.SaleTransaction;
 import com.sevatyres.model.SaleTransactionItem;
 import com.sevatyres.model.Transaction;
 import com.sevatyres.repository.impl.JdbcSaleTransactionRepository;
+import com.sevatyres.service.AppServices;
+import com.sevatyres.service.CompanyService;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -132,19 +135,17 @@ public final class FileGenerationService {
         );
     }
 
-    /** Generate a per-transaction PDF invoice for a SaleTransaction (line items from DB). */
+    /** Generate a per-transaction PDF invoice using the editable Reports template + DB data. */
     public static GeneratedFile generateSaleInvoice(SaleTransaction t) throws IOException {
         File dir = outputDir();
         int year = (t.getSaleDate() != null ? t.getSaleDate() : LocalDate.now()).getYear();
         String invoiceNum = String.format("INV-%d-%05d", year, t.getId());
         String customerName = t.getCustomerName() != null ? t.getCustomerName() : "Walk-in Customer";
-        String dateStr = t.getSaleDate() != null
-                ? t.getSaleDate().format(DateTimeFormatter.ofPattern("d MMMM yyyy")) : "-";
         String generatedStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("d MMMM yyyy"));
 
         List<SaleTransactionItem> items = new JdbcSaleTransactionRepository().findItemsBySaleId(t.getId());
         File outFile = new File(dir, "Invoice-" + invoiceNum + ".pdf");
-        writeSaleInvoicePdf(invoiceNum, customerName, dateStr, generatedStr, t, items, outFile);
+        writeSaleInvoiceFromTemplate(invoiceNum, customerName, generatedStr, t, items, outFile);
 
         String name = "Invoice " + invoiceNum + " – " + customerName;
         return new GeneratedFile(++seq, name, "Invoice", "PDF", LocalDateTime.now(), outFile);
@@ -259,168 +260,143 @@ public final class FileGenerationService {
         return dir;
     }
 
-    // ─── Sale Invoice PDF (DB line items) ─────────────────────────────────────
+    // â”€â”€â”€ Sale Invoice from editable template â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    private static void writeSaleInvoicePdf(String invoiceNum, String customerName,
-            String dateStr, String generatedStr, SaleTransaction t,
-            List<SaleTransactionItem> items, File outFile) throws IOException {
-        int leftMargin = 50, pageW = 612, contentW = pageW - leftMargin - 50;
+    private static void writeSaleInvoiceFromTemplate(String invoiceNum, String customerName,
+            String generatedStr, SaleTransaction t, List<SaleTransactionItem> items,
+            File outFile) throws IOException {
+        CompanyInfo company;
+        String template;
+        try {
+            company = AppServices.company().getCompany();
+            template = AppServices.company().getInvoiceTemplate();
+        } catch (Exception e) {
+            company = new CompanyInfo();
+            template = CompanyService.defaultInvoiceTemplate();
+        }
+        if (template == null || template.isBlank()) {
+            template = CompanyService.defaultInvoiceTemplate();
+        }
+
+        if (items == null || items.isEmpty()) {
+            items = new ArrayList<>();
+            items.add(new SaleTransactionItem(
+                    t.getInventoryItemId(),
+                    t.getParticulars() != null ? t.getParticulars() : "Sale",
+                    Math.max(1, t.getQuantity()),
+                    t.getUnitPrice() > 0 ? t.getUnitPrice() : Math.max(0, t.getSubtotal())));
+        }
+
         LocalDate saleDate = t.getSaleDate() != null ? t.getSaleDate() : LocalDate.now();
+        String dateStr = saleDate.format(DateTimeFormatter.ofPattern("d MMMM yyyy"));
         String dueStr = saleDate.plusDays(14).format(DateTimeFormatter.ofPattern("d MMM yyyy"));
-        double paid = Math.max(0, t.getTotal() - t.getCreditAmount());
+        double subtotal = t.getSubtotal() > 0 ? t.getSubtotal()
+                : items.stream().mapToDouble(SaleTransactionItem::getLineTotal).sum();
+        double taxAmt = Math.max(0, t.getTaxAmount());
+        double total = t.getTotal() > 0 ? t.getTotal() : subtotal + taxAmt;
+        double paid = Math.max(0, total - t.getCreditAmount());
         String status = t.getCreditAmount() <= 0.009 ? "Paid"
                 : (paid <= 0.009 ? "Unpaid" : "Partially paid");
         String custId = t.getCustomerId() != null
                 ? String.format("CUST-%05d", t.getCustomerId()) : "-";
+        String taxLabel = (t.getTaxLabel() != null && !t.getTaxLabel().isBlank())
+                ? t.getTaxLabel() : (taxAmt > 0 ? "Tax" : "0%");
 
-        // Fall back to header row when no Sale_Transaction_Item rows exist
-        if (items == null || items.isEmpty()) {
-            items = new ArrayList<>();
-            SaleTransactionItem fallback = new SaleTransactionItem(
-                    t.getInventoryItemId(),
-                    t.getParticulars() != null ? t.getParticulars() : "Sale",
-                    Math.max(1, t.getQuantity()),
-                    t.getUnitPrice() > 0 ? t.getUnitPrice() : t.getTotal());
-            items.add(fallback);
-        }
-
-        StringBuilder cs = new StringBuilder();
-        // Company header
-        cs.append("BT\n");
-        cs.append("/F1 20 Tf 1 0 0 1 ").append(leftMargin).append(" 760 Tm (Seva Tyres) Tj\n");
-        cs.append("/F2 9 Tf 1 0 0 1 ").append(leftMargin).append(" 744 Tm (123, Business Park, MG Road) Tj\n");
-        cs.append("/F2 9 Tf 1 0 0 1 ").append(leftMargin).append(" 732 Tm (Bhubaneswar, Odisha - 751001) Tj\n");
-        cs.append("/F2 9 Tf 1 0 0 1 ").append(leftMargin).append(" 720 Tm (support@Seva Tyres.com  |  +91 00000 00000) Tj\n");
-        cs.append("/F1 18 Tf 1 0 0 1 430 760 Tm (INVOICE) Tj\n");
-        cs.append("/F1 11 Tf 1 0 0 1 430 742 Tm (# ").append(pdfEsc(invoiceNum)).append(") Tj\n");
-        cs.append("/F2 10 Tf 1 0 0 1 430 726 Tm (").append(pdfEsc(status)).append(") Tj\n");
-        cs.append("ET\n");
-
-        cs.append("q 0.35 0.45 0.7 RG ").append(leftMargin).append(" 708 ").append(contentW).append(" 1.2 re f Q\n");
-
-        // Billed to
-        cs.append("BT\n");
-        cs.append("/F1 10 Tf 1 0 0 1 ").append(leftMargin).append(" 690 Tm (Billed to) Tj\n");
-        cs.append("/F1 11 Tf 1 0 0 1 ").append(leftMargin).append(" 674 Tm (").append(pdfEsc(customerName)).append(") Tj\n");
-        cs.append("/F2 9 Tf 1 0 0 1 ").append(leftMargin).append(" 660 Tm (").append(pdfEsc(custId)).append(") Tj\n");
-        int billY = 646;
-        if (t.getCustomerAddress() != null && !t.getCustomerAddress().isBlank()) {
-            cs.append("/F2 9 Tf 1 0 0 1 ").append(leftMargin).append(" ").append(billY)
-              .append(" Tm (").append(pdfEsc(truncate(t.getCustomerAddress(), 55))).append(") Tj\n");
-            billY -= 14;
-        }
-        if (t.getCustomerPhone() != null && !t.getCustomerPhone().isBlank()) {
-            cs.append("/F2 9 Tf 1 0 0 1 ").append(leftMargin).append(" ").append(billY)
-              .append(" Tm (").append(pdfEsc(t.getCustomerPhone())).append(") Tj\n");
-            billY -= 14;
-        }
-        if (t.getCustomerEmail() != null && !t.getCustomerEmail().isBlank()) {
-            cs.append("/F2 9 Tf 1 0 0 1 ").append(leftMargin).append(" ").append(billY)
-              .append(" Tm (").append(pdfEsc(t.getCustomerEmail())).append(") Tj\n");
-            billY -= 14;
-        }
-
-        // Invoice details (right column)
-        cs.append("/F1 10 Tf 1 0 0 1 340 690 Tm (Invoice details) Tj\n");
-        cs.append("/F2 9 Tf 1 0 0 1 340 674 Tm (Invoice date  ").append(pdfEsc(dateStr)).append(") Tj\n");
-        cs.append("/F2 9 Tf 1 0 0 1 340 660 Tm (Due date      ").append(pdfEsc(dueStr)).append(") Tj\n");
-        cs.append("/F2 9 Tf 1 0 0 1 340 646 Tm (Payment terms Net 14) Tj\n");
-        cs.append("ET\n");
-
-        int tableTop = Math.min(billY, 630) - 10;
-        cs.append("q 0.8 0.8 0.85 RG ").append(leftMargin).append(" ").append(tableTop)
-          .append(" ").append(contentW).append(" 0.6 re f Q\n");
-
-        // Line items header
-        int y = tableTop - 16;
-        cs.append("BT /F1 9 Tf\n");
-        cs.append("1 0 0 1 ").append(leftMargin).append(" ").append(y).append(" Tm (#) Tj\n");
-        cs.append("1 0 0 1 ").append(leftMargin + 30).append(" ").append(y).append(" Tm (Description) Tj\n");
-        cs.append("1 0 0 1 340 ").append(y).append(" Tm (Qty) Tj\n");
-        cs.append("1 0 0 1 390 ").append(y).append(" Tm (Unit price) Tj\n");
-        cs.append("1 0 0 1 480 ").append(y).append(" Tm (Amount) Tj\n");
-        cs.append("ET\n");
-        y -= 8;
-        cs.append("q 0.85 0.85 0.9 RG ").append(leftMargin).append(" ").append(y)
-          .append(" ").append(contentW).append(" 0.4 re f Q\n");
-        y -= 16;
-
-        cs.append("BT /F2 9 Tf\n");
-        int lineNo = 1;
+        StringBuilder itemsBlock = new StringBuilder();
+        itemsBlock.append(String.format("%-4s %-28s %5s %12s %12s%n", "#", "Description", "Qty", "Unit price", "Amount"));
+        int n = 1;
         for (SaleTransactionItem it : items) {
-            if (y < 180) break;
-            String num = String.format("%02d", lineNo++);
+            itemsBlock.append(String.format("%-4s %-28s %5d %12s %12s%n",
+                    String.format("%02d", n++),
+                    truncate(it.getItemName(), 28),
+                    it.getQuantity(),
+                    pdfMoney(it.getUnitPrice()),
+                    pdfMoney(it.getLineTotal())));
+        }
+
+        Map<String, String> vars = new LinkedHashMap<>();
+        vars.put("company_name", nz(company.getCompanyName(), "Seva Tyres"));
+        vars.put("company_address", nz(company.getFullAddress(), ""));
+        vars.put("company_contact", nz(company.getContactLine(), ""));
+        vars.put("invoice_number", invoiceNum);
+        vars.put("invoice_date", dateStr);
+        vars.put("due_date", dueStr);
+        vars.put("status", status);
+        vars.put("customer_name", nz(customerName, ""));
+        vars.put("customer_id", custId);
+        vars.put("customer_address", nz(t.getCustomerAddress(), ""));
+        vars.put("customer_phone", nz(t.getCustomerPhone(), ""));
+        vars.put("customer_email", nz(t.getCustomerEmail(), ""));
+        vars.put("items", itemsBlock.toString().trim());
+        vars.put("subtotal", pdfMoney(subtotal));
+        vars.put("tax_label", taxLabel);
+        vars.put("tax_amount", pdfMoney(taxAmt));
+        vars.put("total", pdfMoney(total));
+        vars.put("paid", pdfMoney(paid));
+        vars.put("remaining", pdfMoney(t.getCreditAmount()));
+        vars.put("bank_name", nz(company.getBankName(), ""));
+        vars.put("bank_account", nz(company.getBankAccount(), ""));
+        vars.put("bank_ifsc", nz(company.getBankIfsc(), ""));
+        vars.put("upi_id", nz(company.getUpiId(), ""));
+        vars.put("generated_on", generatedStr);
+        vars.put("year", String.valueOf(saleDate.getYear()));
+
+        List<String> lines = new ArrayList<>();
+        for (String rawLine : template.replace("\r\n", "\n").replace('\r', '\n').split("\n")) {
+            String expanded = rawLine;
+            for (Map.Entry<String, String> e : vars.entrySet()) {
+                expanded = expanded.replace("{" + e.getKey() + "}", e.getValue() != null ? e.getValue() : "");
+            }
+            if (expanded.contains("\n")) {
+                for (String part : expanded.split("\n")) lines.add(part);
+            } else {
+                lines.add(expanded);
+            }
+        }
+
+        writeTextLinesPdf(lines, outFile);
+    }
+
+    private static void writeTextLinesPdf(List<String> lines, File outFile) throws IOException {
+        int leftMargin = 50;
+        int y = 770;
+        StringBuilder cs = new StringBuilder();
+        cs.append("BT /F2 10 Tf\n");
+        for (String line : lines) {
+            if (y < 50) break;
+            String text = line == null ? "" : line;
+            boolean heading = "INVOICE".equals(text)
+                    || text.startsWith("Billed to")
+                    || text.startsWith("Invoice details")
+                    || text.startsWith("Line items")
+                    || text.startsWith("Payment instructions");
+            if (heading) {
+                cs.append("ET\nBT /F1 12 Tf\n");
+            }
+            while (text.length() > 95) {
+                cs.append("1 0 0 1 ").append(leftMargin).append(" ").append(y)
+                  .append(" Tm (").append(pdfEsc(text.substring(0, 95))).append(") Tj\n");
+                text = text.substring(95);
+                y -= 14;
+                if (y < 50) break;
+            }
             cs.append("1 0 0 1 ").append(leftMargin).append(" ").append(y)
-              .append(" Tm (").append(num).append(") Tj\n");
-            cs.append("1 0 0 1 ").append(leftMargin + 30).append(" ").append(y)
-              .append(" Tm (").append(pdfEsc(truncate(it.getItemName(), 32))).append(") Tj\n");
-            cs.append("1 0 0 1 340 ").append(y).append(" Tm (").append(it.getQuantity()).append(") Tj\n");
-            cs.append("1 0 0 1 390 ").append(y).append(" Tm (").append(pdfMoney(it.getUnitPrice())).append(") Tj\n");
-            cs.append("1 0 0 1 480 ").append(y).append(" Tm (").append(pdfMoney(it.getLineTotal())).append(") Tj\n");
-            y -= 16;
+              .append(" Tm (").append(pdfEsc(text)).append(") Tj\n");
+            y -= (text.isBlank() ? 10 : 14);
+            if (heading) cs.append("ET\nBT /F2 10 Tf\n");
         }
         cs.append("ET\n");
-
-        y -= 8;
-        cs.append("q 0.8 0.8 0.85 RG ").append(leftMargin).append(" ").append(y)
-          .append(" ").append(contentW).append(" 0.5 re f Q\n");
-        y -= 18;
-
-        // Totals
-        cs.append("BT /F2 9 Tf\n");
-        cs.append("1 0 0 1 360 ").append(y).append(" Tm (Subtotal) Tj\n");
-        cs.append("1 0 0 1 480 ").append(y).append(" Tm (").append(pdfMoney(t.getTotal())).append(") Tj\n");
-        y -= 14;
-        cs.append("1 0 0 1 360 ").append(y).append(" Tm (Tax \\(0%\\)) Tj\n");
-        cs.append("1 0 0 1 480 ").append(y).append(" Tm (").append(pdfMoney(0)).append(") Tj\n");
-        y -= 16;
-        cs.append("ET\n");
-        cs.append("BT /F1 11 Tf\n");
-        cs.append("1 0 0 1 360 ").append(y).append(" Tm (Total amount) Tj\n");
-        cs.append("1 0 0 1 480 ").append(y).append(" Tm (").append(pdfMoney(t.getTotal())).append(") Tj\n");
-        y -= 14;
-        cs.append("/F2 9 Tf 1 0 0 1 360 ").append(y).append(" Tm (Paid amount) Tj\n");
-        cs.append("1 0 0 1 480 ").append(y).append(" Tm (- ").append(pdfMoney(paid)).append(") Tj\n");
-        y -= 14;
-        cs.append("/F1 10 Tf 1 0 0 1 360 ").append(y).append(" Tm (Remaining balance) Tj\n");
-        cs.append("1 0 0 1 480 ").append(y).append(" Tm (").append(pdfMoney(t.getCreditAmount())).append(") Tj\n");
-        cs.append("ET\n");
-
-        y -= 28;
-        cs.append("BT /F1 10 Tf 1 0 0 1 ").append(leftMargin).append(" ").append(y)
-          .append(" Tm (Payment instructions) Tj ET\n");
-        y -= 14;
-        cs.append("BT /F2 9 Tf\n");
-        cs.append("1 0 0 1 ").append(leftMargin).append(" ").append(y)
-          .append(" Tm (Bank name       HDFC Bank) Tj\n");
-        y -= 12;
-        cs.append("1 0 0 1 ").append(leftMargin).append(" ").append(y)
-          .append(" Tm (Account number  XXXX XXXX 1234) Tj\n");
-        y -= 12;
-        cs.append("1 0 0 1 ").append(leftMargin).append(" ").append(y)
-          .append(" Tm (IFSC code       HDFC0001234) Tj\n");
-        y -= 12;
-        cs.append("1 0 0 1 ").append(leftMargin).append(" ").append(y)
-          .append(" Tm (UPI ID          Seva Tyres@upi) Tj\n");
-        y -= 16;
-        cs.append("1 0 0 1 ").append(leftMargin).append(" ").append(y)
-          .append(" Tm (Please use invoice number ").append(pdfEsc(invoiceNum))
-          .append(" as the payment reference.) Tj\n");
-        cs.append("ET\n");
-
-        cs.append("q 0.35 0.45 0.7 RG ").append(leftMargin).append(" 70 ").append(contentW).append(" 0.8 re f Q\n");
-        cs.append("BT /F2 8 Tf\n");
-        cs.append("1 0 0 1 ").append(leftMargin).append(" 55 Tm (Thank you for your business. Contact support@Seva Tyres.com or +91 00000 00000.) Tj\n");
-        cs.append("1 0 0 1 ").append(leftMargin).append(" 42 Tm (\\(c\\) ").append(saleDate.getYear())
-          .append(" Seva Tyres. All rights reserved.  Generated on ").append(pdfEsc(generatedStr)).append(") Tj\n");
-        cs.append("ET\n");
-
         writePdfToFile(cs.toString().getBytes(StandardCharsets.ISO_8859_1), outFile);
     }
 
     private static String pdfMoney(double v) {
         return String.format("Rs. %,.2f", v);
     }
+
+    private static String nz(String v, String def) {
+        return v == null || v.isBlank() ? def : v;
+    }
+
 
     // ─── Legacy Transaction Invoice PDF ──────────────────────────────────────
 

@@ -26,7 +26,12 @@ public class SaleTransaction {
     private double cheque;          // cheque payment
     private double creditAmount;    // amount on credit (customer owes)
 
-    // Computed total
+    // Tax (applied on item subtotal)
+    private double subtotal;        // sum of line items before tax
+    private double taxAmount;       // total tax amount
+    private String taxLabel;        // e.g. "GST (18%)" or "CGST + SGST"
+
+    // Computed total = subtotal + taxAmount
     private double total;
 
     // Optional customer info (for invoice; mandatory if credit > 0)
@@ -85,35 +90,48 @@ public class SaleTransaction {
     public double getCreditAmount() { return creditAmount; }
     public void setCreditAmount(double creditAmount) { this.creditAmount = creditAmount; }
 
+    public double getSubtotal() { return subtotal; }
+    public void setSubtotal(double subtotal) { this.subtotal = subtotal; }
+
+    public double getTaxAmount() { return taxAmount; }
+    public void setTaxAmount(double taxAmount) { this.taxAmount = taxAmount; }
+
+    public String getTaxLabel() { return taxLabel; }
+    public void setTaxLabel(String taxLabel) { this.taxLabel = taxLabel; }
+
     public double getTotal() { return total; }
     public void setTotal(double total) { this.total = total; }
 
     /**
      * Recomputes total and credit amount.
-     * If unitPrice > 0: total = unitPrice * quantity; credit = remaining unpaid.
-     * Otherwise: total = sum of all payments (legacy mode).
+     * Prefer explicit subtotal + tax when set; else unitPrice × qty; else payment sum.
      */
     public double computeTotal() {
-        if (unitPrice > 0 && quantity > 0) {
-            total = unitPrice * quantity;
-            double paid = phonePe + accountTransfer + cardSwipe + bajajFinance + cash + cheque;
-            creditAmount = Math.max(0, total - paid);
+        if (subtotal > 0 || taxAmount > 0) {
+            total = subtotal + taxAmount;
+        } else if (unitPrice > 0 && quantity > 0) {
+            subtotal = unitPrice * quantity;
+            total = subtotal + taxAmount;
         } else {
             total = phonePe + accountTransfer + cardSwipe + bajajFinance + cash + cheque + creditAmount;
         }
+        double paid = getPaidAmount();
+        creditAmount = Math.max(0, total - paid);
         return total;
     }
 
-    /** Item total = unitPrice × quantity (what the customer owes in full). */
-    public double getItemTotal() { return unitPrice * quantity; }
+    /** Item subtotal before tax (legacy helper). */
+    public double getItemTotal() {
+        return subtotal > 0 ? subtotal : unitPrice * quantity;
+    }
 
     /** Amount paid so far (all methods except credit). */
     public double getPaidAmount() {
         return phonePe + accountTransfer + cardSwipe + bajajFinance + cash + cheque;
     }
 
-    /** Remaining unpaid balance. */
-    public double getRemaining() { return Math.max(0, getItemTotal() - getPaidAmount()); }
+    /** Remaining unpaid balance against grand total (incl. tax). */
+    public double getRemaining() { return Math.max(0, getTotal() - getPaidAmount()); }
 
     public Integer getCustomerId() { return customerId; }
     public void setCustomerId(Integer customerId) { this.customerId = customerId; }

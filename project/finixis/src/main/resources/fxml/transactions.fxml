@@ -22,6 +22,9 @@
                 <Label text="All sales transactions for Seva Tyres" styleClass="page-subtitle"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
+            <Button fx:id="addTaxBtn" text="Add New Tax" styleClass="btn,btn-secondary" onAction="#onAddTax">
+                <graphic><FontIcon iconLiteral="fas-percent"/></graphic>
+            </Button>
             <Button fx:id="generateReportBtn" text="Generate Report" styleClass="btn,btn-secondary" onAction="#onGenerateReport">
                 <graphic><FontIcon iconLiteral="fas-file-export"/></graphic>
             </Button>

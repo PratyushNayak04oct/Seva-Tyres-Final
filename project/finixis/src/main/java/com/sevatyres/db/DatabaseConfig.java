@@ -97,7 +97,57 @@ public final class DatabaseConfig {
             "ALTER TABLE Sale_Transaction DROP CONSTRAINT IF EXISTS CONSTRAINT_F",
             // Remove email unique constraint (allow customers without email)
             "ALTER TABLE Customer DROP CONSTRAINT IF EXISTS uq_customer_email",
-            "ALTER TABLE Customer DROP CONSTRAINT uq_customer_email"
+            "ALTER TABLE Customer DROP CONSTRAINT uq_customer_email",
+            // Tax columns on sales
+            "ALTER TABLE Sale_Transaction ADD COLUMN subtotal DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "ALTER TABLE Sale_Transaction ADD COLUMN tax_amount DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "ALTER TABLE Sale_Transaction ADD COLUMN tax_label VARCHAR(300)",
+            "CREATE TABLE IF NOT EXISTS Tax (" +
+                "tax_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY," +
+                "tax_name VARCHAR(100) NOT NULL," +
+                "tax_rate DECIMAL(8,4) NOT NULL DEFAULT 0," +
+                "description VARCHAR(300)," +
+                "is_active BOOLEAN NOT NULL DEFAULT TRUE)",
+            "CREATE TABLE IF NOT EXISTS Sale_Transaction_Tax (" +
+                "sale_tax_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY," +
+                "sale_id INTEGER NOT NULL," +
+                "tax_id INTEGER," +
+                "tax_name VARCHAR(100) NOT NULL," +
+                "tax_rate DECIMAL(8,4) NOT NULL DEFAULT 0," +
+                "tax_amount DECIMAL(15,2) NOT NULL DEFAULT 0," +
+                "CONSTRAINT fk_stt_sale FOREIGN KEY (sale_id) REFERENCES Sale_Transaction(sale_id) ON DELETE CASCADE)",
+            "CREATE TABLE IF NOT EXISTS Company_Info (" +
+                "company_id INTEGER PRIMARY KEY DEFAULT 1," +
+                "company_name VARCHAR(200) NOT NULL DEFAULT 'Seva Tyres'," +
+                "owner_name VARCHAR(200)," +
+                "email VARCHAR(200)," +
+                "phone VARCHAR(30)," +
+                "dbt_phone VARCHAR(30)," +
+                "address VARCHAR(500)," +
+                "city VARCHAR(100)," +
+                "state VARCHAR(100)," +
+                "pincode VARCHAR(20)," +
+                "gstin VARCHAR(50)," +
+                "bank_name VARCHAR(200)," +
+                "bank_account VARCHAR(50)," +
+                "bank_ifsc VARCHAR(30)," +
+                "upi_id VARCHAR(100)," +
+                "about_text TEXT," +
+                "support_email VARCHAR(200)," +
+                "support_phone VARCHAR(30))",
+            "CREATE TABLE IF NOT EXISTS Company_Member (" +
+                "member_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY," +
+                "member_name VARCHAR(200) NOT NULL," +
+                "role_title VARCHAR(100)," +
+                "email VARCHAR(200)," +
+                "phone VARCHAR(30)," +
+                "notes VARCHAR(300))",
+            "CREATE TABLE IF NOT EXISTS App_Setting (" +
+                "setting_key VARCHAR(100) PRIMARY KEY," +
+                "setting_value TEXT)",
+            "INSERT INTO Company_Info(company_id, company_name, city, state, pincode) " +
+                "SELECT 1, 'Seva Tyres', 'Bhubaneswar', 'Odisha', '751001' " +
+                "WHERE NOT EXISTS (SELECT 1 FROM Company_Info WHERE company_id = 1)"
         };
         try (Connection conn = get(); Statement stmt = conn.createStatement()) {
             for (String sql : migrations) {

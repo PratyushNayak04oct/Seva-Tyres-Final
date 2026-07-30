@@ -284,6 +284,8 @@ public class EmailService {
                 + "<th style='padding:8px;text-align:right;'>Total</th>"
                 + "</tr></thead><tbody>" + rows + "</tbody></table>"
                 + "<table style='width:100%;max-width:560px;border-collapse:collapse;margin-top:12px;'>"
+                + row("Subtotal", emMoney(sale.getSubtotal() > 0 ? sale.getSubtotal() : sale.getTotal() - sale.getTaxAmount()))
+                + row("Tax" + (sale.getTaxLabel() != null ? " (" + sale.getTaxLabel() + ")" : ""), emMoney(sale.getTaxAmount()))
                 + row("Total amount", emMoney(sale.getTotal()))
                 + row("Paid amount", emMoney(paid))
                 + row("Remaining credit", emMoney(sale.getCreditAmount()))

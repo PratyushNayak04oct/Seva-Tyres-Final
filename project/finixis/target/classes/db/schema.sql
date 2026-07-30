@@ -75,6 +75,9 @@ CREATE TABLE IF NOT EXISTS Sale_Transaction (
     cash                 DECIMAL(15,2) NOT NULL DEFAULT 0 CHECK (cash >= 0),
     cheque               DECIMAL(15,2) NOT NULL DEFAULT 0 CHECK (cheque >= 0),
     credit_amount        DECIMAL(15,2) NOT NULL DEFAULT 0 CHECK (credit_amount >= 0),
+    subtotal             DECIMAL(15,2) NOT NULL DEFAULT 0 CHECK (subtotal >= 0),
+    tax_amount           DECIMAL(15,2) NOT NULL DEFAULT 0 CHECK (tax_amount >= 0),
+    tax_label            VARCHAR(300),
     total                DECIMAL(15,2) NOT NULL DEFAULT 0 CHECK (total >= 0),
     -- Optional customer info (stored denormalized for invoice printing)
     customer_id          INTEGER,
@@ -146,3 +149,66 @@ CREATE INDEX IF NOT EXISTS idx_st_date      ON Sale_Transaction(sale_date);
 CREATE INDEX IF NOT EXISTS idx_st_customer  ON Sale_Transaction(customer_id);
 CREATE INDEX IF NOT EXISTS idx_st_bill      ON Sale_Transaction(bill_no);
 CREATE INDEX IF NOT EXISTS idx_sti_sale     ON Sale_Transaction_Item(sale_id);
+
+-- Tax master definitions (GST, CGST, service tax, etc.)
+CREATE TABLE IF NOT EXISTS Tax (
+    tax_id      INTEGER       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    tax_name    VARCHAR(100)  NOT NULL,
+    tax_rate    DECIMAL(8,4)  NOT NULL DEFAULT 0 CHECK (tax_rate >= 0),
+    description VARCHAR(300),
+    is_active   BOOLEAN       NOT NULL DEFAULT TRUE
+);
+
+-- Taxes applied on a specific sale (snapshot)
+CREATE TABLE IF NOT EXISTS Sale_Transaction_Tax (
+    sale_tax_id  INTEGER       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    sale_id      INTEGER       NOT NULL,
+    tax_id       INTEGER,
+    tax_name     VARCHAR(100)  NOT NULL,
+    tax_rate     DECIMAL(8,4)  NOT NULL DEFAULT 0,
+    tax_amount   DECIMAL(15,2) NOT NULL DEFAULT 0,
+    CONSTRAINT fk_stt_sale FOREIGN KEY (sale_id) REFERENCES Sale_Transaction(sale_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_stt_sale ON Sale_Transaction_Tax(sale_id);
+
+-- Company profile (singleton row company_id = 1)
+CREATE TABLE IF NOT EXISTS Company_Info (
+    company_id     INTEGER       PRIMARY KEY DEFAULT 1,
+    company_name   VARCHAR(200)  NOT NULL DEFAULT 'Seva Tyres',
+    owner_name     VARCHAR(200),
+    email          VARCHAR(200),
+    phone          VARCHAR(30),
+    dbt_phone      VARCHAR(30),
+    address        VARCHAR(500),
+    city           VARCHAR(100),
+    state          VARCHAR(100),
+    pincode        VARCHAR(20),
+    gstin          VARCHAR(50),
+    bank_name      VARCHAR(200),
+    bank_account   VARCHAR(50),
+    bank_ifsc      VARCHAR(30),
+    upi_id         VARCHAR(100),
+    about_text     TEXT,
+    support_email  VARCHAR(200),
+    support_phone  VARCHAR(30)
+);
+
+CREATE TABLE IF NOT EXISTS Company_Member (
+    member_id    INTEGER       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    member_name  VARCHAR(200)  NOT NULL,
+    role_title   VARCHAR(100),
+    email        VARCHAR(200),
+    phone        VARCHAR(30),
+    notes        VARCHAR(300)
+);
+
+-- Key/value app settings (invoice template text, etc.)
+CREATE TABLE IF NOT EXISTS App_Setting (
+    setting_key   VARCHAR(100) PRIMARY KEY,
+    setting_value TEXT
+);
+
+INSERT INTO Company_Info(company_id, company_name, city, state, pincode)
+SELECT 1, 'Seva Tyres', 'Bhubaneswar', 'Odisha', '751001'
+WHERE NOT EXISTS (SELECT 1 FROM Company_Info WHERE company_id = 1);

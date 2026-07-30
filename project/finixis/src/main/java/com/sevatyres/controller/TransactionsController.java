@@ -141,6 +141,11 @@ public class TransactionsController implements Initializable, PageController {
         });
     }
 
+    @FXML private void onAddTax() {
+        Dialogs.showManageTaxes(() ->
+                UiUtil.toast(App.getRoot(), "Taxes updated"));
+    }
+
     @FXML private void onGenerateReport() {
         Dialogs.showGenerateTransactionReport(saleService);
     }
