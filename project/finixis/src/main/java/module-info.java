@@ -19,11 +19,6 @@ module com.sevatyres {
     // JavaMail for email service
     requires java.mail;
 
-    // Apache PDFBox (automatic modules) for inventory PDF import
-    requires org.apache.pdfbox;
-    requires org.apache.pdfbox.io;
-    requires org.apache.fontbox;
-
     opens com.sevatyres            to javafx.fxml;
     opens com.sevatyres.controller to javafx.fxml;
     opens com.sevatyres.viewmodel  to javafx.fxml;

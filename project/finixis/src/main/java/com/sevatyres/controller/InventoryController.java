@@ -21,7 +21,7 @@ public class InventoryController implements Initializable, PageController {
 
     @FXML private TextField searchField;
     @FXML private Label lowStockLabel;
-    @FXML private Button addItemBtn, stockBtn, uploadPdfBtn;
+    @FXML private Button addItemBtn, stockBtn;
     @FXML private TableView<InventoryItem> table;
     @FXML private TableColumn<InventoryItem, String>       nameCol, skuCol, catCol, hsnCol;
     @FXML private TableColumn<InventoryItem, Number>       qtyCol;
@@ -145,13 +145,6 @@ public class InventoryController implements Initializable, PageController {
         Dialogs.showAddItem(saved -> {
             loadFromDb();
             UiUtil.toast(App.getRoot(), "\"" + saved.getName() + "\" added to inventory");
-        });
-    }
-
-    @FXML private void onUploadPdf() {
-        Dialogs.pickPdfAndImport(() -> {
-            loadFromDb();
-            UiUtil.toast(App.getRoot(), "PDF items imported");
         });
     }
 

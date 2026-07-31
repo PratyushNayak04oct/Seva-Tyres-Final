@@ -14,7 +14,6 @@ com\finixis\controller\CreditController.class
 com\finixis\model\TransactionLineItem.class
 com\sevatyres\controller\CompanyController.class
 com\sevatyres\controller\TransactionsController$1.class
-com\sevatyres\service\InventoryPdfImportService$ImportResult.class
 com\sevatyres\model\GeneratedFile.class
 com\sevatyres\controller\AccountsController$2.class
 com\sevatyres\controller\AccountController.class
@@ -42,6 +41,7 @@ com\sevatyres\service\CompanyService.class
 com\sevatyres\controller\AccountsController$1.class
 com\sevatyres\db\DatabaseConfig.class
 com\finixis\controller\PageController.class
+com\sevatyres\util\GstUtil$Totals.class
 com\sevatyres\controller\Dialogs$13.class
 com\sevatyres\controller\UsersController$4.class
 com\sevatyres\service\CustomerService.class
@@ -105,7 +105,6 @@ com\finixis\controller\CreditController$1.class
 com\finixis\controller\UsersController.class
 com\sevatyres\controller\CreditController$4.class
 com\sevatyres\controller\InventoryController$1.class
-com\sevatyres\controller\Dialogs$1PreviewRow.class
 com\finixis\controller\AccountsController$1.class
 com\sevatyres\model\TransactionLineItem.class
 com\sevatyres\model\SaleTaxLine.class
@@ -113,7 +112,6 @@ com\finixis\controller\InventoryController$3.class
 com\finixis\model\User.class
 com\sevatyres\controller\AlertsController$3.class
 com\sevatyres\model\AlertConfig$Channel.class
-com\sevatyres\service\InventoryPdfImportService.class
 com\finixis\controller\CreditController$2.class
 com\sevatyres\controller\AlertsController.class
 com\finixis\db\SeedData.class
@@ -132,7 +130,6 @@ com\sevatyres\model\Invoice.class
 com\sevatyres\controller\AlertsController$RecipientEntry.class
 com\sevatyres\controller\Dialogs$12.class
 com\sevatyres\model\InventoryItem$StockStatus.class
-com\sevatyres\service\InventoryPdfImportService$ParsedItem.class
 com\finixis\controller\UsersController$4.class
 com\finixis\repository\impl\JdbcInventoryRepository.class
 com\sevatyres\service\EmailService$2.class

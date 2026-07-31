@@ -20,10 +20,11 @@ import java.util.Optional;
 public class SaleTransactionService {
 
     private final SaleTransactionRepository repo;
-    private final InvoiceNumberService invoiceNumbers = new InvoiceNumberService();
+    private final InvoiceNumberService invoiceNumbers;
 
     public SaleTransactionService() {
         this.repo = new JdbcSaleTransactionRepository();
+        this.invoiceNumbers = new InvoiceNumberService();
     }
 
     public List<SaleTransaction> getAll() { return repo.findAll(); }
@@ -56,12 +57,16 @@ public class SaleTransactionService {
         tx.setSaleDate(saleDate);
         if (tx.getBillNo() == null || tx.getBillNo().isBlank()) {
             tx.setBillNo(invoiceNumbers.nextInvoiceNumber(saleDate));
+        } else {
+            tx.setBillNo(tx.getBillNo().trim());
+            invoiceNumbers.noteIssued(tx.getBillNo(), saleDate);
         }
 
         if (!items.isEmpty()) {
             double taxable = 0, cgst = 0, sgst = 0, inclusive = 0;
             int totalQty = 0;
             for (SaleTransactionItem it : items) {
+                // Base = Inclusive ÷ 1.18 ; GST = Inclusive − Base ; CGST = SGST
                 GstUtil.LineGst split = GstUtil.splitLine(it.getUnitPrice(), it.getQuantity());
                 it.setTaxableAmount(split.taxable());
                 it.setCgstAmount(split.cgst());
@@ -75,37 +80,30 @@ public class SaleTransactionService {
                 inclusive += split.inclusiveTotal();
                 totalQty += it.getQuantity();
             }
-            taxable = GstUtil.round2(taxable);
-            cgst = GstUtil.round2(cgst);
-            sgst = GstUtil.round2(sgst);
-            inclusive = GstUtil.round2(inclusive);
 
-            // Discount: amount wins if > 0, else percent of inclusive total
             double discAmt = Math.max(0, tx.getDiscountAmount());
             double discPct = Math.max(0, tx.getDiscountPercent());
             if (discAmt <= 0.009 && discPct > 0) {
                 discAmt = GstUtil.round2(inclusive * discPct / 100.0);
-                tx.setDiscountAmount(discAmt);
             }
-            discAmt = Math.min(discAmt, inclusive);
-            tx.setDiscountAmount(discAmt);
 
-            double afterDiscount = GstUtil.round2(inclusive - discAmt);
-            double roundOff = GstUtil.roundOffToRupee(afterDiscount);
-            double grand = GstUtil.roundToRupee(afterDiscount);
+            GstUtil.Totals totals = GstUtil.totalsFromLines(
+                    taxable, cgst, sgst, inclusive, discAmt);
 
-            tx.setSubtotal(taxable);
-            tx.setCgstTotal(cgst);
-            tx.setSgstTotal(sgst);
-            tx.setTaxAmount(GstUtil.round2(cgst + sgst));
+            tx.setDiscountAmount(totals.discount());
+            tx.setSubtotal(totals.taxable());
+            tx.setCgstTotal(totals.cgst());
+            tx.setSgstTotal(totals.sgst());
+            tx.setTaxAmount(GstUtil.round2(totals.cgst() + totals.sgst()));
             tx.setTaxLabel("CGST 9% + SGST 9%");
-            tx.setRoundOff(roundOff);
-            tx.setTotal(grand);
+            // Round-off column = signed amount used to reach nearest rupee
+            tx.setRoundOff(totals.roundOff());
+            tx.setTotal(totals.grandTotal());
             tx.setQuantity(Math.max(1, totalQty));
 
             double paid = tx.getPhonePe() + tx.getAccountTransfer() + tx.getCardSwipe()
                     + tx.getBajajFinance() + tx.getCash() + tx.getCheque();
-            tx.setCreditAmount(Math.max(0, GstUtil.round2(grand - paid)));
+            tx.setCreditAmount(Math.max(0, GstUtil.round2(totals.grandTotal() - paid)));
 
             if (tx.getParticulars() == null || tx.getParticulars().isBlank()) {
                 StringBuilder sb = new StringBuilder();
@@ -133,7 +131,6 @@ public class SaleTransactionService {
         if (!items.isEmpty()) {
             ((JdbcSaleTransactionRepository) repo).saveItems(saved.getId(), items);
         }
-        // Persist CGST/SGST as tax lines for reporting
         List<SaleTaxLine> autoTaxes = List.of(
                 new SaleTaxLine(null, "CGST", 9.0, saved.getCgstTotal()),
                 new SaleTaxLine(null, "SGST", 9.0, saved.getSgstTotal())

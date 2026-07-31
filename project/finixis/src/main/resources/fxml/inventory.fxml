@@ -11,9 +11,6 @@
             <Label text="Manage stock levels and items" styleClass="page-subtitle"/>
         </VBox>
         <Region HBox.hgrow="ALWAYS"/>
-        <Button fx:id="uploadPdfBtn" text="Upload PDF to add items" styleClass="btn,btn-secondary" onAction="#onUploadPdf">
-            <graphic><FontIcon iconLiteral="fas-file-pdf"/></graphic>
-        </Button>
         <Button fx:id="stockBtn" text="Stock In / Out" styleClass="btn,btn-secondary" onAction="#onStock">
             <graphic><FontIcon iconLiteral="fas-truck"/></graphic>
         </Button>

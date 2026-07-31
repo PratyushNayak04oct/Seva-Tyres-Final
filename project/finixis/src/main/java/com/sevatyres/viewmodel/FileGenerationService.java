@@ -342,11 +342,22 @@ public final class FileGenerationService {
         if (t.getSubtotal() > 0) taxableSum = t.getSubtotal();
         if (t.getCgstTotal() > 0) cgstSum = t.getCgstTotal();
         if (t.getSgstTotal() > 0) sgstSum = t.getSgstTotal();
-        double taxAmt = t.getTaxAmount() > 0 ? t.getTaxAmount() : GstUtil.round2(cgstSum + sgstSum);
+        // Keep CGST/SGST equal on the invoice footer
+        if (Math.abs(cgstSum - sgstSum) > 0.009) {
+            double gst = GstUtil.round2(cgstSum + sgstSum);
+            long gstPaise = Math.round(gst * 100.0);
+            if ((gstPaise & 1L) != 0) {
+                gstPaise -= 1;
+                taxableSum = GstUtil.round2(taxableSum + 0.01);
+            }
+            cgstSum = sgstSum = (gstPaise / 2) / 100.0;
+        }
+        double taxAmt = GstUtil.round2(cgstSum + sgstSum);
         double discount = Math.max(0, t.getDiscountAmount());
-        double roundOff = t.getRoundOff();
-        double total = t.getTotal() > 0 ? t.getTotal()
-                : GstUtil.roundToRupee(taxableSum + taxAmt - discount);
+        double preRound = GstUtil.round2(taxableSum + cgstSum + sgstSum - discount);
+        double total = t.getTotal() > 0 ? t.getTotal() : GstUtil.roundToRupee(preRound);
+        // Round Off column = exact delta used to reach the nearest-rupee total
+        double roundOff = GstUtil.round2(total - preRound);
         double paid = Math.max(0, total - t.getCreditAmount());
         String status = t.getCreditAmount() <= 0.009 ? "Paid"
                 : (paid <= 0.009 ? "Unpaid" : "Partially paid");

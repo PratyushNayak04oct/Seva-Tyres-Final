@@ -27,6 +27,9 @@ import java.util.ResourceBundle;
 public class TransactionsController implements Initializable, PageController {
 
     @FXML private TextField searchField;
+    @FXML private TextField currentBillField;
+    @FXML private Button updateBillBtn;
+    @FXML private Label nextBillHint;
     @FXML private TableView<SaleTransaction> table;
     @FXML private TableColumn<SaleTransaction, LocalDate>        dateCol;
     @FXML private TableColumn<SaleTransaction, String>           billNoCol, particularsCol, brandCol, paymentCol, customerCol;
@@ -103,7 +106,15 @@ public class TransactionsController implements Initializable, PageController {
             }
         });
 
+        loadBillNumber();
         loadFromDb();
+    }
+
+    private void loadBillNumber() {
+        if (currentBillField == null) return;
+        var inv = AppServices.invoiceNumbers();
+        currentBillField.setText(inv.getCurrentInvoiceNumber(LocalDate.now()));
+        nextBillHint.setText("Next invoice will be " + inv.peekNextInvoiceNumber(LocalDate.now()));
     }
 
     private void loadFromDb() {
@@ -116,6 +127,19 @@ public class TransactionsController implements Initializable, PageController {
                           || (t.getCustomerName() != null && t.getCustomerName().toLowerCase().contains(q)))
                 .toList();
         table.getItems().setAll(filtered);
+        loadBillNumber();
+    }
+
+    @FXML private void onUpdateBillNumber() {
+        try {
+            AppServices.invoiceNumbers().setCurrentInvoiceNumber(currentBillField.getText());
+            loadBillNumber();
+            UiUtil.toast(App.getRoot(), "Bill number updated");
+        } catch (Exception ex) {
+            Dialogs.info("Invalid Bill Number",
+                    ex.getMessage() != null ? ex.getMessage()
+                            : "Use format ST-26/27-069");
+        }
     }
 
     private void generateInvoice(SaleTransaction t) {
@@ -137,6 +161,7 @@ public class TransactionsController implements Initializable, PageController {
     @FXML private void onNewTransaction() {
         Dialogs.showNewSaleTransaction(saved -> {
             loadFromDb();
+            loadBillNumber();
             UiUtil.toast(App.getRoot(), "Transaction saved (Bill No: " + saved.getBillNo() + ")");
         });
     }

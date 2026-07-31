@@ -20,7 +20,7 @@ import java.util.ResourceBundle;
 public class PurchaseController implements Initializable, PageController {
 
     @FXML private TextField searchField;
-    @FXML private Button addBtn, uploadPdfBtn;
+    @FXML private Button addBtn;
     @FXML private TableView<PurchaseInfo> table;
     @FXML private TableColumn<PurchaseInfo, String> nameCol;
     @FXML private TableColumn<PurchaseInfo, Double> priceCol;
@@ -91,12 +91,5 @@ public class PurchaseController implements Initializable, PageController {
 
     @FXML private void onAdd() {
         Dialogs.showPurchaseInfo(null, saved -> load());
-    }
-
-    @FXML private void onUploadPdf() {
-        Dialogs.pickPdfAndImport(() -> {
-            load();
-            UiUtil.toast(App.getRoot(), "PDF items imported");
-        });
     }
 }

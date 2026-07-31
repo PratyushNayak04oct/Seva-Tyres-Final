@@ -33,6 +33,15 @@
             </Button>
         </HBox>
 
+        <!-- Current invoice number (editable, saved to DB sequence) -->
+        <HBox spacing="12" alignment="CENTER_LEFT" styleClass="card">
+            <Label text="Current bill number" style="-fx-font-weight:700;"/>
+            <TextField fx:id="currentBillField" promptText="ST-26/27-069" prefWidth="180" styleClass="field"/>
+            <Button fx:id="updateBillBtn" text="Update" styleClass="btn,btn-secondary" onAction="#onUpdateBillNumber"/>
+            <Label fx:id="nextBillHint" style="-fx-text-fill: -text-muted; -fx-font-size:12px;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+        </HBox>
+
         <!-- Search bar -->
         <HBox spacing="10" alignment="CENTER_LEFT">
             <TextField fx:id="searchField" promptText="Search by bill no, particulars, customer…"

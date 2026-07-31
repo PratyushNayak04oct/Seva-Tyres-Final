@@ -12,9 +12,6 @@
             <Label text="Item names and buying prices" styleClass="page-subtitle"/>
         </VBox>
         <Region HBox.hgrow="ALWAYS"/>
-        <Button fx:id="uploadPdfBtn" text="Upload PDF to add items" styleClass="btn,btn-secondary" onAction="#onUploadPdf">
-            <graphic><FontIcon iconLiteral="fas-file-pdf"/></graphic>
-        </Button>
         <Button fx:id="addBtn" text="Add Purchase Info" styleClass="btn" onAction="#onAdd">
             <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
         </Button>

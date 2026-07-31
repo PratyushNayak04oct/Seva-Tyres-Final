@@ -17,6 +17,7 @@ public final class AppServices {
     private static TaxService             taxes;
     private static CompanyService         company;
     private static PurchaseInfoService    purchases;
+    private static InvoiceNumberService   invoiceNumbers;
 
     private AppServices() {}
 
@@ -33,6 +34,7 @@ public final class AppServices {
         taxes            = new TaxService();
         company          = new CompanyService();
         purchases        = new PurchaseInfoService();
+        invoiceNumbers   = new InvoiceNumberService();
         alerts.ensureCreditPaymentCampaign();
         email.startReminderScheduler(customers, transactions);
     }
@@ -47,6 +49,7 @@ public final class AppServices {
     public static TaxService            taxes()            { return taxes; }
     public static CompanyService        company()          { return company; }
     public static PurchaseInfoService   purchases()        { return purchases; }
+    public static InvoiceNumberService  invoiceNumbers()   { return invoiceNumbers; }
 
     public static void shutdown() {
         if (email != null) email.shutdown();
