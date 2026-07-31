@@ -21,10 +21,12 @@ public class SaleTransactionService {
 
     private final SaleTransactionRepository repo;
     private final InvoiceNumberService invoiceNumbers;
+    private final ProfitService profitService;
 
     public SaleTransactionService() {
         this.repo = new JdbcSaleTransactionRepository();
         this.invoiceNumbers = new InvoiceNumberService();
+        this.profitService = new ProfitService();
     }
 
     public List<SaleTransaction> getAll() { return repo.findAll(); }
@@ -100,6 +102,7 @@ public class SaleTransactionService {
             tx.setRoundOff(totals.roundOff());
             tx.setTotal(totals.grandTotal());
             tx.setQuantity(Math.max(1, totalQty));
+            tx.setNetProfit(profitService.calculateNetProfit(tx, items));
 
             double paid = tx.getPhonePe() + tx.getAccountTransfer() + tx.getCardSwipe()
                     + tx.getBajajFinance() + tx.getCash() + tx.getCheque();
@@ -124,6 +127,7 @@ public class SaleTransactionService {
             double paid = tx.getPhonePe() + tx.getAccountTransfer() + tx.getCardSwipe()
                     + tx.getBajajFinance() + tx.getCash() + tx.getCheque();
             tx.setCreditAmount(Math.max(0, tx.getTotal() - paid));
+            tx.setNetProfit(profitService.calculateNetProfit(tx, items));
         }
 
         SaleTransaction saved = repo.save(tx);

@@ -34,7 +34,7 @@ public class TransactionsController implements Initializable, PageController {
     @FXML private TableColumn<SaleTransaction, LocalDate>        dateCol;
     @FXML private TableColumn<SaleTransaction, String>           billNoCol, particularsCol, brandCol, paymentCol, customerCol;
     @FXML private TableColumn<SaleTransaction, Integer>          qtyCol;
-    @FXML private TableColumn<SaleTransaction, Double>           totalCol;
+    @FXML private TableColumn<SaleTransaction, Double>           totalCol, profitCol;
     @FXML private TableColumn<SaleTransaction, SaleTransaction>  actionCol;
 
     private SaleTransactionService saleService;
@@ -51,6 +51,7 @@ public class TransactionsController implements Initializable, PageController {
         paymentCol.setCellValueFactory(cell ->
                 new ReadOnlyObjectWrapper<>(cell.getValue().getPaymentSummary()));
         totalCol.setCellValueFactory(new PropertyValueFactory<>("total"));
+        profitCol.setCellValueFactory(new PropertyValueFactory<>("netProfit"));
         customerCol.setCellValueFactory(cell ->
                 new ReadOnlyObjectWrapper<>(cell.getValue().getCustomerName() != null
                         ? cell.getValue().getCustomerName() : "\u2014"));
@@ -68,6 +69,17 @@ public class TransactionsController implements Initializable, PageController {
                 super.updateItem(v, empty);
                 setText(empty || v == null ? "" : UiUtil.money(v));
                 if (!empty) setStyle("-fx-font-weight:700;");
+            }
+        });
+
+        profitCol.setCellFactory(col -> new TableCell<>() {
+            @Override protected void updateItem(Double v, boolean empty) {
+                super.updateItem(v, empty);
+                if (empty || v == null) { setText(""); return; }
+                setText(UiUtil.money(v));
+                if (v < -0.009) setStyle("-fx-font-weight:700; -fx-text-fill: #e53e3e;");
+                else if (v > 0.009) setStyle("-fx-font-weight:700; -fx-text-fill: #38a169;");
+                else setStyle("-fx-font-weight:700;");
             }
         });
 
@@ -173,5 +185,9 @@ public class TransactionsController implements Initializable, PageController {
 
     @FXML private void onGenerateReport() {
         Dialogs.showGenerateTransactionReport(saleService);
+    }
+
+    @FXML private void onProfitLossReport() {
+        Dialogs.showGenerateProfitLossReport(saleService);
     }
 }

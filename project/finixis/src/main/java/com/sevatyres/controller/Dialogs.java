@@ -907,7 +907,8 @@ public final class Dialogs {
                 labeledField("Discount",       readonlyField(UiUtil.money(t.getDiscountAmount()))),
                 labeledField("Round Off",      readonlyField(UiUtil.money(t.getRoundOff()))),
                 labeledField("Credit",         readonlyField(UiUtil.money(t.getCreditAmount()))),
-                labeledField("Total",          readonlyField(UiUtil.money(t.getTotal()))));
+                labeledField("Total",          readonlyField(UiUtil.money(t.getTotal()))),
+                labeledField("Net Profit",     readonlyField(UiUtil.money(t.getNetProfit()))));
 
         if (t.getCustomerName() != null) {
             form.getChildren().add(new Separator());
@@ -1159,6 +1160,65 @@ public final class Dialogs {
             }
         });
 
+        presentDialog(stage, content, buttonRow(cancelBtn, generateBtn));
+    }
+
+    public static void showGenerateProfitLossReport(SaleTransactionService saleService) {
+        Stage stage = buildDialogStage("Profit / Loss Report");
+        VBox content = contentVBox();
+        Label title = dialogTitle("Profit / Loss Report");
+        Label sub = dialogSub("Net profit per transaction (sell excl. 18% GST − buying price) × qty, "
+                + "minus discount excl. tax, plus bill round-off. Export as PDF or Excel.");
+
+        DatePicker fromDate = new DatePicker(LocalDate.now().minusMonths(1));
+        fromDate.getStyleClass().add("date-picker");
+        fromDate.setMaxWidth(Double.MAX_VALUE);
+        DatePicker toDate = new DatePicker(LocalDate.now());
+        toDate.getStyleClass().add("date-picker");
+        toDate.setMaxWidth(Double.MAX_VALUE);
+
+        ToggleGroup formatGroup = new ToggleGroup();
+        RadioButton pdfRadio = new RadioButton("PDF");
+        RadioButton excelRadio = new RadioButton("Excel");
+        pdfRadio.setToggleGroup(formatGroup);
+        excelRadio.setToggleGroup(formatGroup);
+        pdfRadio.setSelected(true);
+        CheckBox allTimeCheck = new CheckBox("Show all transactions (ignore date range)");
+        HBox formatRow = new HBox(20, pdfRadio, excelRadio);
+        formatRow.setAlignment(Pos.CENTER_LEFT);
+        Label err = errLabel();
+
+        content.getChildren().addAll(
+                new VBox(4, title, sub), new Separator(),
+                labeledField("From Date", fromDate),
+                labeledField("To Date", toDate),
+                allTimeCheck,
+                labeledField("Format", formatRow),
+                err);
+
+        Button cancelBtn = new Button("Cancel");
+        cancelBtn.getStyleClass().addAll("btn", "btn-secondary");
+        Button generateBtn = new Button("Generate");
+        generateBtn.getStyleClass().add("btn");
+        cancelBtn.setOnAction(e -> stage.close());
+        generateBtn.setOnAction(e -> {
+            var txns = allTimeCheck.isSelected()
+                    ? saleService.getAll()
+                    : saleService.getByDateRange(fromDate.getValue(), toDate.getValue());
+            try {
+                var gf = FileGenerationService.generateProfitLossReport(
+                        txns, pdfRadio.isSelected() ? "PDF" : "Excel");
+                AppServices.reports().saveFile(gf);
+                stage.close();
+                showFileDownloadedDialog(gf.getFile());
+                if (java.awt.Desktop.isDesktopSupported()
+                        && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.OPEN)) {
+                    java.awt.Desktop.getDesktop().open(gf.getFile());
+                }
+            } catch (Exception ex) {
+                err.setText("Error generating report: " + ex.getMessage());
+            }
+        });
         presentDialog(stage, content, buttonRow(cancelBtn, generateBtn));
     }
 

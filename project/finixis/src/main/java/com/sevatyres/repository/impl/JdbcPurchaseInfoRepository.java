@@ -40,6 +40,35 @@ public class JdbcPurchaseInfoRepository implements PurchaseInfoRepository {
     }
 
     @Override
+    public Optional<PurchaseInfo> findByInventoryId(int inventoryId) {
+        try (Connection con = DatabaseConfig.get();
+             PreparedStatement ps = con.prepareStatement(
+                     "SELECT * FROM Purchase_Info WHERE inventory_id=? ORDER BY purchase_id DESC")) {
+            ps.setInt(1, inventoryId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(map(rs)) : Optional.empty();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public Optional<PurchaseInfo> findByItemName(String itemName) {
+        if (itemName == null || itemName.isBlank()) return Optional.empty();
+        try (Connection con = DatabaseConfig.get();
+             PreparedStatement ps = con.prepareStatement(
+                     "SELECT * FROM Purchase_Info WHERE LOWER(item_name)=LOWER(?) ORDER BY purchase_id DESC")) {
+            ps.setString(1, itemName.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(map(rs)) : Optional.empty();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
     public PurchaseInfo save(PurchaseInfo info) {
         if (info.getId() > 0) {
             String sql = "UPDATE Purchase_Info SET inventory_id=?, item_name=?, buying_price=?, notes=? WHERE purchase_id=?";

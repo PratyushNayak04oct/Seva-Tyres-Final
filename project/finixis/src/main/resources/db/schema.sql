@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS Sale_Transaction (
     discount_amount      DECIMAL(15,2) NOT NULL DEFAULT 0,
     round_off            DECIMAL(15,2) NOT NULL DEFAULT 0,
     total                DECIMAL(15,2) NOT NULL DEFAULT 0 CHECK (total >= 0),
+    net_profit           DECIMAL(15,2) NOT NULL DEFAULT 0,
     -- Optional customer info (stored denormalized for invoice printing)
     customer_id          INTEGER,
     customer_name        VARCHAR(200),

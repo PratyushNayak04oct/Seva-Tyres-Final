@@ -25,6 +25,9 @@
             <Button fx:id="addTaxBtn" text="Add New Tax" styleClass="btn,btn-secondary" onAction="#onAddTax">
                 <graphic><FontIcon iconLiteral="fas-percent"/></graphic>
             </Button>
+            <Button fx:id="profitLossBtn" text="Profit / Loss Report" styleClass="btn,btn-secondary" onAction="#onProfitLossReport">
+                <graphic><FontIcon iconLiteral="fas-chart-line"/></graphic>
+            </Button>
             <Button fx:id="generateReportBtn" text="Generate Report" styleClass="btn,btn-secondary" onAction="#onGenerateReport">
                 <graphic><FontIcon iconLiteral="fas-file-export"/></graphic>
             </Button>
@@ -57,9 +60,10 @@
                 <TableColumn fx:id="particularsCol"  text="Particulars"  prefWidth="180"/>
                 <TableColumn fx:id="brandCol"        text="Brand"        prefWidth="110"/>
                 <TableColumn fx:id="qtyCol"          text="Qty"          prefWidth="60"  style="-fx-alignment:CENTER;"/>
-                <TableColumn fx:id="paymentCol"      text="Payment"      prefWidth="160"/>
+                <TableColumn fx:id="paymentCol"      text="Payment"      prefWidth="140"/>
                 <TableColumn fx:id="totalCol"        text="Total"        prefWidth="100" style="-fx-alignment:CENTER_RIGHT;"/>
-                <TableColumn fx:id="customerCol"     text="Customer"     prefWidth="130"/>
+                <TableColumn fx:id="profitCol"       text="Net Profit"   prefWidth="110" style="-fx-alignment:CENTER_RIGHT;"/>
+                <TableColumn fx:id="customerCol"     text="Customer"     prefWidth="120"/>
                 <TableColumn fx:id="actionCol"       text="Actions"      prefWidth="280" minWidth="260" sortable="false" style="-fx-alignment:CENTER;"/>
             </columns>
         </TableView>

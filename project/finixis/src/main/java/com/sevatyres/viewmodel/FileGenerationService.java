@@ -50,7 +50,7 @@ public final class FileGenerationService {
         File dir    = outputDir();
 
         String[] headers = {"Date", "Bill No", "Particulars", "Brand", "Qty",
-                "PhonePe", "Cash", "Credit", "Total", "Customer"};
+                "PhonePe", "Cash", "Credit", "Total", "Net Profit", "Customer"};
         List<String[]> rows = new ArrayList<>();
         for (SaleTransaction t : txns) {
             rows.add(new String[]{
@@ -63,6 +63,7 @@ public final class FileGenerationService {
                     String.format("%.2f", t.getCash()),
                     String.format("%.2f", t.getCreditAmount()),
                     String.format("%.2f", t.getTotal()),
+                    String.format("%.2f", t.getNetProfit()),
                     t.getCustomerName() != null ? t.getCustomerName() : ""
             });
         }
@@ -75,6 +76,57 @@ public final class FileGenerationService {
         } else {
             File xlsx = writeExcel("Sale Transactions", headers, rows,
                     new File(dir, "SaleReport_" + ts + ".xlsx"));
+            return new GeneratedFile(++seq, name, "Report", "Excel", now, xlsx);
+        }
+    }
+
+    /** Profit/Loss report — one row per transaction with net profit. */
+    public static GeneratedFile generateProfitLossReport(List<SaleTransaction> txns, String format) throws IOException {
+        String ts = LocalDateTime.now().format(TS);
+        String name = "Seva Tyres Profit Loss Report – " + LocalDateTime.now().format(DISP);
+        File dir = outputDir();
+
+        var profitService = new com.sevatyres.service.ProfitService();
+        var saleRepo = new JdbcSaleTransactionRepository();
+
+        String[] headers = {"Date", "Bill No", "Particulars", "Qty", "Bill Total",
+                "Net Profit", "P/L", "Customer"};
+        List<String[]> rows = new ArrayList<>();
+        double profitSum = 0;
+        for (SaleTransaction t : txns) {
+            double profit = t.getNetProfit();
+            // Recompute when missing (older bills) so the report stays accurate
+            List<SaleTransactionItem> items = saleRepo.findItemsBySaleId(t.getId());
+            if (Math.abs(profit) < 0.0001) {
+                profit = profitService.calculateNetProfit(t, items);
+            }
+            profitSum += profit;
+            String pl = profit > 0.009 ? "Profit" : (profit < -0.009 ? "Loss" : "Break-even");
+            rows.add(new String[]{
+                    t.getSaleDate() != null ? t.getSaleDate().format(DateTimeFormatter.ofPattern("MMM d, yyyy")) : "",
+                    t.getBillNo() != null ? t.getBillNo() : "",
+                    t.getParticulars() != null ? t.getParticulars() : "",
+                    String.valueOf(t.getQuantity()),
+                    String.format("%.2f", t.getTotal()),
+                    String.format("%.2f", profit),
+                    pl,
+                    t.getCustomerName() != null ? t.getCustomerName() : ""
+            });
+        }
+        rows.add(new String[]{"", "", "TOTAL", "", "",
+                String.format("%.2f", profitSum),
+                profitSum >= 0 ? "Net Profit" : "Net Loss", ""});
+
+        LocalDateTime now = LocalDateTime.now();
+        String subtitle = "Generated: " + now.format(FULL)
+                + "  |  Net profit = (sell excl. 18% GST − buy) × qty − discount excl. tax + round-off";
+        if ("PDF".equalsIgnoreCase(format)) {
+            File pdf = writePdf(name, subtitle, headers, rows,
+                    new File(dir, "ProfitLoss_" + ts + ".pdf"));
+            return new GeneratedFile(++seq, name, "Report", "PDF", now, pdf);
+        } else {
+            File xlsx = writeExcel("Profit Loss", headers, rows,
+                    new File(dir, "ProfitLoss_" + ts + ".xlsx"));
             return new GeneratedFile(++seq, name, "Report", "Excel", now, xlsx);
         }
     }

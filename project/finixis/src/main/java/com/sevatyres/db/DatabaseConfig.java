@@ -175,7 +175,8 @@ public final class DatabaseConfig {
                 "fy_label VARCHAR(10) PRIMARY KEY," +
                 "last_seq INTEGER NOT NULL DEFAULT 0)",
             "INSERT INTO Invoice_Sequence(fy_label, last_seq) SELECT '26/27', 69 " +
-                "WHERE NOT EXISTS (SELECT 1 FROM Invoice_Sequence WHERE fy_label = '26/27')"
+                "WHERE NOT EXISTS (SELECT 1 FROM Invoice_Sequence WHERE fy_label = '26/27')",
+            "ALTER TABLE Sale_Transaction ADD COLUMN net_profit DECIMAL(15,2) NOT NULL DEFAULT 0"
         };
         try (Connection conn = get(); Statement stmt = conn.createStatement()) {
             for (String sql : migrations) {

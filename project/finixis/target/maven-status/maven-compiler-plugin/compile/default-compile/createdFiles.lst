@@ -62,6 +62,7 @@ com\finixis\App.class
 com\sevatyres\service\PurchaseInfoService.class
 com\sevatyres\viewmodel\Permissions.class
 com\sevatyres\controller\Dialogs.class
+com\sevatyres\controller\TransactionsController$4.class
 com\sevatyres\controller\UsersController$3.class
 com\sevatyres\controller\Dialogs$14.class
 com\sevatyres\controller\CreditController$2.class
@@ -137,6 +138,7 @@ com\sevatyres\service\InvoiceNumberService.class
 com\finixis\model\InventoryItem.class
 com\sevatyres\controller\ReportsController.class
 com\sevatyres\repository\InventoryRepository.class
+com\sevatyres\service\ProfitService.class
 com\sevatyres\model\SaleTransactionItem.class
 com\finixis\controller\ShellController.class
 com\sevatyres\model\AlertConfig.class

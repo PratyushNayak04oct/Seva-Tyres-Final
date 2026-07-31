@@ -63,9 +63,9 @@ public class JdbcSaleTransactionRepository implements SaleTransactionRepository 
         String sql = "INSERT INTO Sale_Transaction("
                 + "bill_no,sale_date,particulars,brand,quantity,unit_price,inventory_item_id,"
                 + "phone_pe,account_transfer,card_swipe,bajaj_finance,cash,cheque,credit_amount,"
-                + "subtotal,tax_amount,tax_label,cgst_total,sgst_total,discount_percent,discount_amount,round_off,total,"
+                + "subtotal,tax_amount,tax_label,cgst_total,sgst_total,discount_percent,discount_amount,round_off,total,net_profit,"
                 + "customer_id,customer_name,customer_email,customer_phone,customer_address"
-                + ") VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                + ") VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         try (Connection con = DatabaseConfig.get();
              PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             setParams(ps, tx);
@@ -82,13 +82,13 @@ public class JdbcSaleTransactionRepository implements SaleTransactionRepository 
         String sql = "UPDATE Sale_Transaction SET "
                 + "bill_no=?,sale_date=?,particulars=?,brand=?,quantity=?,unit_price=?,inventory_item_id=?,"
                 + "phone_pe=?,account_transfer=?,card_swipe=?,bajaj_finance=?,cash=?,cheque=?,credit_amount=?,"
-                + "subtotal=?,tax_amount=?,tax_label=?,cgst_total=?,sgst_total=?,discount_percent=?,discount_amount=?,round_off=?,total=?,"
+                + "subtotal=?,tax_amount=?,tax_label=?,cgst_total=?,sgst_total=?,discount_percent=?,discount_amount=?,round_off=?,total=?,net_profit=?,"
                 + "customer_id=?,customer_name=?,customer_email=?,customer_phone=?,customer_address=? "
                 + "WHERE sale_id=?";
         try (Connection con = DatabaseConfig.get();
              PreparedStatement ps = con.prepareStatement(sql)) {
             setParams(ps, tx);
-            ps.setInt(29, tx.getId());
+            ps.setInt(30, tx.getId());
             ps.executeUpdate();
         } catch (SQLException e) { throw new RuntimeException(e); }
     }
@@ -198,12 +198,13 @@ public class JdbcSaleTransactionRepository implements SaleTransactionRepository 
         ps.setDouble(21, tx.getDiscountAmount());
         ps.setDouble(22, tx.getRoundOff());
         ps.setDouble(23, tx.getTotal());
-        if (tx.getCustomerId() != null) ps.setInt(24, tx.getCustomerId());
-        else ps.setNull(24, Types.INTEGER);
-        ps.setString(25, tx.getCustomerName());
-        ps.setString(26, tx.getCustomerEmail());
-        ps.setString(27, tx.getCustomerPhone());
-        ps.setString(28, tx.getCustomerAddress());
+        ps.setDouble(24, tx.getNetProfit());
+        if (tx.getCustomerId() != null) ps.setInt(25, tx.getCustomerId());
+        else ps.setNull(25, Types.INTEGER);
+        ps.setString(26, tx.getCustomerName());
+        ps.setString(27, tx.getCustomerEmail());
+        ps.setString(28, tx.getCustomerPhone());
+        ps.setString(29, tx.getCustomerAddress());
     }
 
     private SaleTransaction map(ResultSet rs) throws SQLException {
@@ -236,6 +237,7 @@ public class JdbcSaleTransactionRepository implements SaleTransactionRepository 
         try { tx.setDiscountAmount(rs.getDouble("discount_amount")); } catch (SQLException ignored) {}
         try { tx.setRoundOff(rs.getDouble("round_off")); } catch (SQLException ignored) {}
         tx.setTotal(rs.getDouble("total"));
+        try { tx.setNetProfit(rs.getDouble("net_profit")); } catch (SQLException ignored) {}
         if (tx.getSubtotal() <= 0 && tx.getTotal() > 0) {
             tx.setSubtotal(Math.max(0, tx.getTotal() - tx.getTaxAmount()));
         }
