@@ -64,7 +64,7 @@
                 <TableColumn fx:id="totalCol"        text="Total"        prefWidth="100" style="-fx-alignment:CENTER_RIGHT;"/>
                 <TableColumn fx:id="profitCol"       text="Net Profit"   prefWidth="110" style="-fx-alignment:CENTER_RIGHT;"/>
                 <TableColumn fx:id="customerCol"     text="Customer"     prefWidth="120"/>
-                <TableColumn fx:id="actionCol"       text="Actions"      prefWidth="280" minWidth="260" sortable="false" style="-fx-alignment:CENTER;"/>
+                <TableColumn fx:id="actionCol"       text="Actions"      prefWidth="400" minWidth="400" sortable="false" style="-fx-alignment:CENTER;"/>
             </columns>
         </TableView>
 
