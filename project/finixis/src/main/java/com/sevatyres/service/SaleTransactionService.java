@@ -6,6 +6,7 @@ import com.sevatyres.model.SaleTransaction;
 import com.sevatyres.model.SaleTransactionItem;
 import com.sevatyres.repository.SaleTransactionRepository;
 import com.sevatyres.repository.impl.JdbcSaleTransactionRepository;
+import com.sevatyres.util.GstUtil;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -13,12 +14,13 @@ import java.util.Optional;
 
 /**
  * Service for Sale Transactions.
- * On save: deducts inventory stock and auto-creates a credit entry if there is
- * a remaining unpaid balance.
+ * Prices from inventory are tax-inclusive; lines store Rate / CGST / SGST.
+ * Bill numbers follow ST-26/27-070 per financial year.
  */
 public class SaleTransactionService {
 
     private final SaleTransactionRepository repo;
+    private final InvoiceNumberService invoiceNumbers = new InvoiceNumberService();
 
     public SaleTransactionService() {
         this.repo = new JdbcSaleTransactionRepository();
@@ -45,31 +47,66 @@ public class SaleTransactionService {
         return save(tx, items, List.of());
     }
 
-    /**
-     * Saves a multi-item sale with optional applied taxes.
-     * Grand total = item subtotal + tax amount. Credit = total − paid.
-     */
     public SaleTransaction save(SaleTransaction tx, List<SaleTransactionItem> items,
                                 List<SaleTaxLine> taxLines) {
         if (items == null) items = List.of();
         if (taxLines == null) taxLines = List.of();
+
+        LocalDate saleDate = tx.getSaleDate() != null ? tx.getSaleDate() : LocalDate.now();
+        tx.setSaleDate(saleDate);
         if (tx.getBillNo() == null || tx.getBillNo().isBlank()) {
-            tx.setBillNo("B" + System.currentTimeMillis() % 100000);
+            tx.setBillNo(invoiceNumbers.nextInvoiceNumber(saleDate));
         }
 
         if (!items.isEmpty()) {
-            double itemsTotal = items.stream().mapToDouble(SaleTransactionItem::getLineTotal).sum();
-            int totalQty = items.stream().mapToInt(SaleTransactionItem::getQuantity).sum();
-            tx.setSubtotal(itemsTotal);
-            double tax = Math.max(0, tx.getTaxAmount());
-            if (tax <= 0 && !taxLines.isEmpty()) {
-                tax = taxLines.stream().mapToDouble(SaleTaxLine::getTaxAmount).sum();
-                tx.setTaxAmount(tax);
+            double taxable = 0, cgst = 0, sgst = 0, inclusive = 0;
+            int totalQty = 0;
+            for (SaleTransactionItem it : items) {
+                GstUtil.LineGst split = GstUtil.splitLine(it.getUnitPrice(), it.getQuantity());
+                it.setTaxableAmount(split.taxable());
+                it.setCgstAmount(split.cgst());
+                it.setSgstAmount(split.sgst());
+                it.setLineTotal(split.inclusiveTotal());
+                it.setRate(it.getQuantity() > 0
+                        ? GstUtil.round2(split.taxable() / it.getQuantity()) : 0);
+                taxable += split.taxable();
+                cgst += split.cgst();
+                sgst += split.sgst();
+                inclusive += split.inclusiveTotal();
+                totalQty += it.getQuantity();
             }
-            tx.setTotal(itemsTotal + tax);
+            taxable = GstUtil.round2(taxable);
+            cgst = GstUtil.round2(cgst);
+            sgst = GstUtil.round2(sgst);
+            inclusive = GstUtil.round2(inclusive);
+
+            // Discount: amount wins if > 0, else percent of inclusive total
+            double discAmt = Math.max(0, tx.getDiscountAmount());
+            double discPct = Math.max(0, tx.getDiscountPercent());
+            if (discAmt <= 0.009 && discPct > 0) {
+                discAmt = GstUtil.round2(inclusive * discPct / 100.0);
+                tx.setDiscountAmount(discAmt);
+            }
+            discAmt = Math.min(discAmt, inclusive);
+            tx.setDiscountAmount(discAmt);
+
+            double afterDiscount = GstUtil.round2(inclusive - discAmt);
+            double roundOff = GstUtil.roundOffToRupee(afterDiscount);
+            double grand = GstUtil.roundToRupee(afterDiscount);
+
+            tx.setSubtotal(taxable);
+            tx.setCgstTotal(cgst);
+            tx.setSgstTotal(sgst);
+            tx.setTaxAmount(GstUtil.round2(cgst + sgst));
+            tx.setTaxLabel("CGST 9% + SGST 9%");
+            tx.setRoundOff(roundOff);
+            tx.setTotal(grand);
+            tx.setQuantity(Math.max(1, totalQty));
+
             double paid = tx.getPhonePe() + tx.getAccountTransfer() + tx.getCardSwipe()
                     + tx.getBajajFinance() + tx.getCash() + tx.getCheque();
-            tx.setCreditAmount(Math.max(0, tx.getTotal() - paid));
+            tx.setCreditAmount(Math.max(0, GstUtil.round2(grand - paid)));
+
             if (tx.getParticulars() == null || tx.getParticulars().isBlank()) {
                 StringBuilder sb = new StringBuilder();
                 for (SaleTransactionItem it : items) {
@@ -78,17 +115,14 @@ public class SaleTransactionService {
                 }
                 tx.setParticulars(sb.toString());
             }
-            tx.setQuantity(Math.max(1, totalQty));
             if (tx.getUnitPrice() <= 0 && items.size() == 1) {
                 tx.setUnitPrice(items.get(0).getUnitPrice());
             } else if (items.size() > 1) {
                 tx.setUnitPrice(0);
             }
         } else {
-            if (tx.getSubtotal() <= 0 && tx.getUnitPrice() > 0 && tx.getQuantity() > 0) {
-                tx.setSubtotal(tx.getUnitPrice() * tx.getQuantity());
-            }
-            tx.setTotal(tx.getSubtotal() + Math.max(0, tx.getTaxAmount()));
+            tx.setTotal(tx.getSubtotal() + Math.max(0, tx.getTaxAmount())
+                    - Math.max(0, tx.getDiscountAmount()) + tx.getRoundOff());
             double paid = tx.getPhonePe() + tx.getAccountTransfer() + tx.getCardSwipe()
                     + tx.getBajajFinance() + tx.getCash() + tx.getCheque();
             tx.setCreditAmount(Math.max(0, tx.getTotal() - paid));
@@ -99,7 +133,13 @@ public class SaleTransactionService {
         if (!items.isEmpty()) {
             ((JdbcSaleTransactionRepository) repo).saveItems(saved.getId(), items);
         }
-        ((JdbcSaleTransactionRepository) repo).saveTaxes(saved.getId(), taxLines);
+        // Persist CGST/SGST as tax lines for reporting
+        List<SaleTaxLine> autoTaxes = List.of(
+                new SaleTaxLine(null, "CGST", 9.0, saved.getCgstTotal()),
+                new SaleTaxLine(null, "SGST", 9.0, saved.getSgstTotal())
+        );
+        ((JdbcSaleTransactionRepository) repo).saveTaxes(saved.getId(),
+                taxLines.isEmpty() ? autoTaxes : taxLines);
 
         if (!items.isEmpty()) {
             var invRepo = new com.sevatyres.repository.impl.JdbcInventoryRepository();

@@ -10,6 +10,8 @@ import com.sevatyres.model.Transaction;
 import com.sevatyres.repository.impl.JdbcSaleTransactionRepository;
 import com.sevatyres.service.AppServices;
 import com.sevatyres.service.CompanyService;
+import com.sevatyres.util.AmountInWords;
+import com.sevatyres.util.GstUtil;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -277,6 +279,10 @@ public final class FileGenerationService {
             company = new CompanyInfo();
             template = CompanyService.loadBuiltinInvoiceHtmlTemplate();
         }
+        // Prefer built-in Tax Invoice layout when uploaded template lacks GST placeholders
+        if (template == null || !template.contains("{cgst_total}") || !template.contains("{hsn_summary_html}")) {
+            template = CompanyService.loadBuiltinInvoiceHtmlTemplate();
+        }
 
         if (items == null || items.isEmpty()) {
             items = new ArrayList<>();
@@ -288,12 +294,59 @@ public final class FileGenerationService {
         }
 
         LocalDate saleDate = t.getSaleDate() != null ? t.getSaleDate() : LocalDate.now();
-        String dateStr = saleDate.format(DateTimeFormatter.ofPattern("d MMMM yyyy"));
-        String dueStr = saleDate.plusDays(14).format(DateTimeFormatter.ofPattern("d MMM yyyy"));
-        double subtotal = t.getSubtotal() > 0 ? t.getSubtotal()
-                : items.stream().mapToDouble(SaleTransactionItem::getLineTotal).sum();
-        double taxAmt = Math.max(0, t.getTaxAmount());
-        double total = t.getTotal() > 0 ? t.getTotal() : subtotal + taxAmt;
+        String dateStr = saleDate.format(DateTimeFormatter.ofPattern("dd-MMM-yy"));
+        String dateLong = saleDate.format(DateTimeFormatter.ofPattern("d MMMM yyyy"));
+
+        // Ensure GST split on each line
+        double taxableSum = 0, cgstSum = 0, sgstSum = 0;
+        int totalQty = 0;
+        Map<String, double[]> hsnMap = new LinkedHashMap<>(); // hsn -> [taxable,cgst,sgst]
+        StringBuilder itemsHtml = new StringBuilder();
+        int n = 1;
+        for (SaleTransactionItem it : items) {
+            GstUtil.LineGst split = (it.getTaxableAmount() > 0 || it.getCgstAmount() > 0)
+                    ? new GstUtil.LineGst(it.getTaxableAmount(), it.getCgstAmount(),
+                    it.getSgstAmount(), it.getLineTotal() > 0 ? it.getLineTotal()
+                    : GstUtil.round2(it.getUnitPrice() * it.getQuantity()))
+                    : GstUtil.splitLine(it.getUnitPrice(), it.getQuantity());
+            double rate = it.getQuantity() > 0
+                    ? GstUtil.round2(split.taxable() / it.getQuantity()) : 0;
+            if (it.getRate() > 0) rate = it.getRate();
+            taxableSum += split.taxable();
+            cgstSum += split.cgst();
+            sgstSum += split.sgst();
+            totalQty += it.getQuantity();
+            String hsn = nz(it.getHsnSac(), "");
+            hsnMap.computeIfAbsent(hsn.isBlank() ? "-" : hsn, k -> new double[3]);
+            double[] acc = hsnMap.get(hsn.isBlank() ? "-" : hsn);
+            acc[0] += split.taxable();
+            acc[1] += split.cgst();
+            acc[2] += split.sgst();
+
+            String desc = htmlEsc(it.getItemName() != null ? it.getItemName() : "");
+            if (it.getRimSize() != null && !it.getRimSize().isBlank()) {
+                desc += "<br/><span class=\"small muted\">Rim: " + htmlEsc(it.getRimSize()) + "</span>";
+            }
+            itemsHtml.append("      <tr>\n")
+                    .append("        <td class=\"center\">").append(n++).append("</td>\n")
+                    .append("        <td>").append(desc).append("</td>\n")
+                    .append("        <td class=\"center\">").append(htmlEsc(hsn)).append("</td>\n")
+                    .append("        <td class=\"center\">18%</td>\n")
+                    .append("        <td class=\"right\">").append(it.getQuantity()).append(" Pcs</td>\n")
+                    .append("        <td class=\"right\">").append(htmlEsc(num(rate))).append("</td>\n")
+                    .append("        <td class=\"center\">Pcs</td>\n")
+                    .append("        <td class=\"right\">").append(htmlEsc(num(split.taxable()))).append("</td>\n")
+                    .append("      </tr>\n");
+        }
+
+        if (t.getSubtotal() > 0) taxableSum = t.getSubtotal();
+        if (t.getCgstTotal() > 0) cgstSum = t.getCgstTotal();
+        if (t.getSgstTotal() > 0) sgstSum = t.getSgstTotal();
+        double taxAmt = t.getTaxAmount() > 0 ? t.getTaxAmount() : GstUtil.round2(cgstSum + sgstSum);
+        double discount = Math.max(0, t.getDiscountAmount());
+        double roundOff = t.getRoundOff();
+        double total = t.getTotal() > 0 ? t.getTotal()
+                : GstUtil.roundToRupee(taxableSum + taxAmt - discount);
         double paid = Math.max(0, total - t.getCreditAmount());
         String status = t.getCreditAmount() <= 0.009 ? "Paid"
                 : (paid <= 0.009 ? "Unpaid" : "Partially paid");
@@ -302,18 +355,20 @@ public final class FileGenerationService {
         String custId = t.getCustomerId() != null
                 ? String.format("CUST-%05d", t.getCustomerId()) : "-";
         String taxLabel = (t.getTaxLabel() != null && !t.getTaxLabel().isBlank())
-                ? t.getTaxLabel() : (taxAmt > 0 ? "Tax" : "0%");
+                ? t.getTaxLabel() : "CGST 9% + SGST 9%";
 
-        StringBuilder itemsHtml = new StringBuilder();
-        int n = 1;
-        for (SaleTransactionItem it : items) {
-            itemsHtml.append("        <tr>\n")
-                    .append("          <td class=\"num\">").append(String.format("%02d", n++)).append("</td>\n")
-                    .append("          <td><p class=\"item-name\">").append(htmlEsc(it.getItemName())).append("</p></td>\n")
-                    .append("          <td class=\"qty\">").append(it.getQuantity()).append("</td>\n")
-                    .append("          <td class=\"money\">").append(htmlEsc(moneyInr(it.getUnitPrice()))).append("</td>\n")
-                    .append("          <td class=\"money\">").append(htmlEsc(moneyInr(it.getLineTotal()))).append("</td>\n")
-                    .append("        </tr>\n");
+        StringBuilder hsnHtml = new StringBuilder();
+        for (Map.Entry<String, double[]> e : hsnMap.entrySet()) {
+            double[] v = e.getValue();
+            hsnHtml.append("      <tr>\n")
+                    .append("        <td class=\"center\">").append(htmlEsc(e.getKey())).append("</td>\n")
+                    .append("        <td class=\"right\">").append(htmlEsc(num(v[0]))).append("</td>\n")
+                    .append("        <td class=\"center\">9%</td>\n")
+                    .append("        <td class=\"right\">").append(htmlEsc(num(v[1]))).append("</td>\n")
+                    .append("        <td class=\"center\">9%</td>\n")
+                    .append("        <td class=\"right\">").append(htmlEsc(num(v[2]))).append("</td>\n")
+                    .append("        <td class=\"right\">").append(htmlEsc(num(v[1] + v[2]))).append("</td>\n")
+                    .append("      </tr>\n");
         }
 
         String addrLine = nz(company.getAddress(), "");
@@ -324,25 +379,34 @@ public final class FileGenerationService {
             cityLine += company.getState().trim();
         }
         if (company.getPincode() != null && !company.getPincode().isBlank()) {
-            if (!cityLine.isEmpty()) cityLine += " â€” ";
+            if (!cityLine.isEmpty()) cityLine += " — ";
             cityLine += company.getPincode().trim();
         }
-
+        String companyState = nz(company.getState(), "Odisha");
+        String companyStateCode = stateCode(company.getGstin(), companyState);
         String supportEm = nz(company.getSupportEmail(), nz(company.getEmail(), ""));
         String supportPh = nz(company.getSupportPhone(), nz(company.getPhone(), ""));
+        String paymentMode = paymentModeLabel(t);
 
         Map<String, String> vars = new LinkedHashMap<>();
         vars.put("company_name", htmlEsc(nz(company.getCompanyName(), "Seva Tyres")));
         vars.put("company_address", htmlEsc(nz(company.getFullAddress(), "")).replace("\n", "<br/>"));
         vars.put("company_address_line1", htmlEsc(addrLine));
         vars.put("company_city_line", htmlEsc(cityLine));
+        vars.put("company_gstin", htmlEsc(nz(company.getGstin(), "")));
+        vars.put("company_state", htmlEsc(companyState));
+        vars.put("company_state_code", htmlEsc(companyStateCode));
         vars.put("company_contact", htmlEsc(nz(company.getContactLine(), "")));
         vars.put("support_email", htmlEsc(supportEm));
         vars.put("support_phone", htmlEsc(supportPh));
         vars.put("bill_no", htmlEsc(billNo));
         vars.put("invoice_number", htmlEsc(billNo));
         vars.put("invoice_date", htmlEsc(dateStr));
-        vars.put("due_date", htmlEsc(dueStr));
+        vars.put("reference_line", htmlEsc("dt. " + dateStr));
+        vars.put("payment_mode", htmlEsc(paymentMode));
+        vars.put("buyer_order_no", "");
+        vars.put("buyer_order_date", htmlEsc(dateStr));
+        vars.put("due_date", htmlEsc(dateLong));
         vars.put("status", htmlEsc(status));
         vars.put("status_class", statusClass);
         vars.put("customer_name", htmlEsc(nz(customerName, "")));
@@ -350,12 +414,24 @@ public final class FileGenerationService {
         vars.put("customer_address", htmlEsc(nz(t.getCustomerAddress(), "")));
         vars.put("customer_phone", htmlEsc(nz(t.getCustomerPhone(), "")));
         vars.put("customer_email", htmlEsc(nz(t.getCustomerEmail(), "")));
+        vars.put("customer_gstin", "");
+        vars.put("customer_state", htmlEsc(companyState));
+        vars.put("customer_state_code", htmlEsc(companyStateCode));
+        vars.put("place_of_supply", htmlEsc(companyState));
         vars.put("items_html", itemsHtml.toString());
         vars.put("items", itemsHtml.toString());
-        vars.put("subtotal", htmlEsc(moneyInr(subtotal)));
+        vars.put("hsn_summary_html", hsnHtml.toString());
+        vars.put("subtotal", htmlEsc(num(taxableSum)));
+        vars.put("cgst_total", htmlEsc(num(cgstSum)));
+        vars.put("sgst_total", htmlEsc(num(sgstSum)));
+        vars.put("discount_amount", htmlEsc(num(discount)));
+        vars.put("round_off", htmlEsc(num(roundOff)));
+        vars.put("total_qty", htmlEsc(totalQty + " Pcs"));
         vars.put("tax_label", htmlEsc(taxLabel));
-        vars.put("tax_amount", htmlEsc(moneyInr(taxAmt)));
-        vars.put("total", htmlEsc(moneyInr(total)));
+        vars.put("tax_amount", htmlEsc(num(taxAmt)));
+        vars.put("total", htmlEsc("\u20b9 " + num(total)));
+        vars.put("amount_in_words", htmlEsc(AmountInWords.inr(total)));
+        vars.put("tax_in_words", htmlEsc(AmountInWords.inr(taxAmt)));
         vars.put("paid", htmlEsc(moneyInr(paid)));
         vars.put("remaining", htmlEsc(moneyInr(t.getCreditAmount())));
         vars.put("bank_name", htmlEsc(nz(company.getBankName(), "")));
@@ -372,8 +448,32 @@ public final class FileGenerationService {
         Files.writeString(outFile.toPath(), html, StandardCharsets.UTF_8);
     }
 
+    private static String num(double v) {
+        return String.format("%,.2f", v);
+    }
+
     private static String moneyInr(double v) {
         return "\u20b9" + String.format("%,.2f", v);
+    }
+
+    private static String stateCode(String gstin, String stateName) {
+        if (gstin != null && gstin.length() >= 2 && Character.isDigit(gstin.charAt(0))) {
+            return gstin.substring(0, 2);
+        }
+        if (stateName != null && stateName.toLowerCase(Locale.ROOT).contains("odisha")) return "21";
+        return "";
+    }
+
+    private static String paymentModeLabel(SaleTransaction t) {
+        List<String> parts = new ArrayList<>();
+        if (t.getCash() > 0.009) parts.add("Cash");
+        if (t.getPhonePe() > 0.009) parts.add("PhonePe");
+        if (t.getAccountTransfer() > 0.009) parts.add("A/C Transfer");
+        if (t.getCardSwipe() > 0.009) parts.add("Card");
+        if (t.getBajajFinance() > 0.009) parts.add("Bajaj");
+        if (t.getCheque() > 0.009) parts.add("Cheque");
+        if (t.getCreditAmount() > 0.009) parts.add("Credit");
+        return parts.isEmpty() ? "" : String.join(", ", parts);
     }
 
     private static String htmlEsc(String s) {

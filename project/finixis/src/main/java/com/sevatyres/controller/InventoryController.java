@@ -21,9 +21,9 @@ public class InventoryController implements Initializable, PageController {
 
     @FXML private TextField searchField;
     @FXML private Label lowStockLabel;
-    @FXML private Button addItemBtn, stockBtn;
+    @FXML private Button addItemBtn, stockBtn, uploadPdfBtn;
     @FXML private TableView<InventoryItem> table;
-    @FXML private TableColumn<InventoryItem, String>       nameCol, skuCol, catCol;
+    @FXML private TableColumn<InventoryItem, String>       nameCol, skuCol, catCol, hsnCol;
     @FXML private TableColumn<InventoryItem, Number>       qtyCol;
     @FXML private TableColumn<InventoryItem, Double>       priceCol;
     @FXML private TableColumn<InventoryItem, InventoryItem> stockCol, actionCol;
@@ -36,6 +36,9 @@ public class InventoryController implements Initializable, PageController {
 
         nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
         skuCol.setCellValueFactory(new PropertyValueFactory<>("brand"));
+        hsnCol.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(
+                cell.getValue().getHsnSac() != null && !cell.getValue().getHsnSac().isBlank()
+                        ? cell.getValue().getHsnSac() : "—"));
         catCol.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(
                 cell.getValue().getCategory() != null ? cell.getValue().getCategory() : "—"));
         qtyCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
@@ -50,7 +53,6 @@ public class InventoryController implements Initializable, PageController {
             }
         });
 
-        // Task 7: Stock Status — Out of Stock / Low Stock / In Stock
         stockCol.setCellFactory(col -> new TableCell<>() {
             @Override protected void updateItem(InventoryItem item, boolean empty) {
                 super.updateItem(item, empty);
@@ -90,7 +92,6 @@ public class InventoryController implements Initializable, PageController {
                 editBtn.setOnAction(e -> {
                     InventoryItem it = getTableView().getItems().get(getIndex());
                     Dialogs.showEditItem(it, updated -> {
-                        inventoryService.updateItem(updated);
                         loadFromDb();
                         UiUtil.toast(App.getRoot(), "\"" + updated.getName() + "\" updated");
                     });
@@ -133,7 +134,8 @@ public class InventoryController implements Initializable, PageController {
         lowStockLabel.setText(issues + " items need attention");
         String q = searchField.getText().toLowerCase().trim();
         List<InventoryItem> filtered = q.isEmpty() ? all
-                : all.stream().filter(i -> i.getName().toLowerCase().contains(q)).toList();
+                : all.stream().filter(i -> i.getName().toLowerCase().contains(q)
+                || (i.getHsnSac() != null && i.getHsnSac().toLowerCase().contains(q))).toList();
         table.getItems().setAll(filtered);
     }
 
@@ -141,9 +143,15 @@ public class InventoryController implements Initializable, PageController {
 
     @FXML private void onAddItem() {
         Dialogs.showAddItem(saved -> {
-            inventoryService.addItem(saved.getName(), saved.getQuantity(), saved.getUnitPrice());
             loadFromDb();
             UiUtil.toast(App.getRoot(), "\"" + saved.getName() + "\" added to inventory");
+        });
+    }
+
+    @FXML private void onUploadPdf() {
+        Dialogs.pickPdfAndImport(() -> {
+            loadFromDb();
+            UiUtil.toast(App.getRoot(), "PDF items imported");
         });
     }
 

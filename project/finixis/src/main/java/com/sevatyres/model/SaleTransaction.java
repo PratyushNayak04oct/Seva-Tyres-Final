@@ -26,12 +26,17 @@ public class SaleTransaction {
     private double cheque;          // cheque payment
     private double creditAmount;    // amount on credit (customer owes)
 
-    // Tax (applied on item subtotal)
-    private double subtotal;        // sum of line items before tax
-    private double taxAmount;       // total tax amount
-    private String taxLabel;        // e.g. "GST (18%)" or "CGST + SGST"
+    // Tax (applied on item subtotal) — CGST/SGST split from inclusive prices
+    private double subtotal;        // taxable value (before GST)
+    private double taxAmount;       // cgst + sgst
+    private String taxLabel;        // e.g. "CGST 9% + SGST 9%"
+    private double cgstTotal;
+    private double sgstTotal;
+    private double discountPercent;
+    private double discountAmount;
+    private double roundOff;
 
-    // Computed total = subtotal + taxAmount
+    // Computed total = taxable + cgst + sgst - discount + roundOff (approx)
     private double total;
 
     // Optional customer info (for invoice; mandatory if credit > 0)
@@ -98,6 +103,21 @@ public class SaleTransaction {
 
     public String getTaxLabel() { return taxLabel; }
     public void setTaxLabel(String taxLabel) { this.taxLabel = taxLabel; }
+
+    public double getCgstTotal() { return cgstTotal; }
+    public void setCgstTotal(double cgstTotal) { this.cgstTotal = cgstTotal; }
+
+    public double getSgstTotal() { return sgstTotal; }
+    public void setSgstTotal(double sgstTotal) { this.sgstTotal = sgstTotal; }
+
+    public double getDiscountPercent() { return discountPercent; }
+    public void setDiscountPercent(double discountPercent) { this.discountPercent = discountPercent; }
+
+    public double getDiscountAmount() { return discountAmount; }
+    public void setDiscountAmount(double discountAmount) { this.discountAmount = discountAmount; }
+
+    public double getRoundOff() { return roundOff; }
+    public void setRoundOff(double roundOff) { this.roundOff = roundOff; }
 
     public double getTotal() { return total; }
     public void setTotal(double total) { this.total = total; }

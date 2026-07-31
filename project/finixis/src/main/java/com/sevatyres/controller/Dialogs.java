@@ -3,15 +3,19 @@ package com.sevatyres.controller;
 import com.sevatyres.App;
 import com.sevatyres.model.*;
 import com.sevatyres.service.AppServices;
+import com.sevatyres.service.InventoryPdfImportService;
 import com.sevatyres.service.SaleTransactionService;
 import com.sevatyres.viewmodel.FileGenerationService;
 import com.sevatyres.viewmodel.ThemeManager;
 import com.sevatyres.viewmodel.UiUtil;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.CheckBoxTableCell;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
@@ -409,18 +413,20 @@ public final class Dialogs {
 
     // â”€â”€â”€ New Sale Transaction dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
-        Stage stage = buildDialogStage("New Transaction", 820, 980);
+    public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
+        Stage stage = buildDialogStage("New Transaction", 900, 1100);
         VBox content = contentVBox();
-        content.setPrefWidth(860);
+        content.setPrefWidth(920);
         Label title = dialogTitle("New Transaction");
-        Label sub   = dialogSub("Scan a barcode into the product field, or pick from inventory. Quantity starts at 0. Brand comes from each item.");
+        Label sub   = dialogSub("Inventory prices include tax. Lines show Rate (excl.), CGST 9% and SGST 9%. Invoice number is generated automatically.");
 
         DatePicker datePicker = new DatePicker(LocalDate.now());
         datePicker.getStyleClass().add("date-picker");
         datePicker.setMaxWidth(Double.MAX_VALUE);
 
-        TextField billNoField = styledField("Bill number (optional — auto-generated if blank)");
+        TextField billNoField = styledField("Auto: ST-26/27-070");
+        billNoField.setEditable(false);
+        billNoField.setStyle("-fx-background-color: -surface-2; -fx-opacity: 0.9;");
 
         List<InventoryItem> inventoryItems = AppServices.inventory().getAll();
 
@@ -430,46 +436,40 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
         TextField bajajField      = styledField("0.00");
         TextField cashField       = styledField("0.00");
         TextField chequeField     = styledField("0.00");
+        TextField discountPctField = styledField("0");
+        TextField discountAmtField = styledField("0.00");
 
-        Label itemTotalLabel = new Label("\u20b90.00");
-        itemTotalLabel.setStyle("-fx-font-weight:700; -fx-font-size:18px; -fx-text-fill: -primary-600;");
-        Label taxTotalLabel = new Label("\u20b90.00");
-        taxTotalLabel.setStyle("-fx-font-weight:600; -fx-font-size:15px;");
+        Label taxableLabel = new Label("\u20b90.00");
+        taxableLabel.setStyle("-fx-font-weight:700; -fx-font-size:15px;");
+        Label cgstLabel = new Label("\u20b90.00");
+        cgstLabel.setStyle("-fx-font-weight:600; -fx-font-size:15px;");
+        Label sgstLabel = new Label("\u20b90.00");
+        sgstLabel.setStyle("-fx-font-weight:600; -fx-font-size:15px;");
+        Label discountLabel = new Label("\u20b90.00");
+        discountLabel.setStyle("-fx-font-weight:600; -fx-font-size:15px;");
         Label grandTotalLabel = new Label("\u20b90.00");
         grandTotalLabel.setStyle("-fx-font-weight:700; -fx-font-size:18px; -fx-text-fill: -primary-600;");
         Label paidTotalLabel = new Label("\u20b90.00");
         paidTotalLabel.setStyle("-fx-font-weight:600; -fx-font-size:15px;");
         Label remainingLabel = new Label("\u20b90.00");
         remainingLabel.setStyle("-fx-font-weight:700; -fx-font-size:16px; -fx-text-fill: #38a169;");
-        Label taxInfoLabel = new Label("No tax selected");
-        taxInfoLabel.setStyle("-fx-font-size:11px; -fx-text-fill: -text-muted;");
-
-        // Tax selection (multi)
-        List<Tax> activeTaxes = AppServices.taxes().getActive();
-        List<CheckBox> taxChecks = new ArrayList<>();
-        VBox taxChecksBox = new VBox(6);
-        for (Tax tax : activeTaxes) {
-            CheckBox cb = new CheckBox(tax.getDisplayLabel());
-            cb.setUserData(tax);
-            taxChecks.add(cb);
-            taxChecksBox.getChildren().add(cb);
-        }
-        if (taxChecks.isEmpty()) {
-            Label none = new Label("No taxes defined yet. Use \"Add New Tax\" on the Transactions page.");
-            none.setWrapText(true);
-            none.setStyle("-fx-font-size:12px; -fx-text-fill: -text-muted;");
-            taxChecksBox.getChildren().add(none);
-        }
 
         class ItemRow {
             final TextField productField = styledField("Product name or scan barcode\u2026");
             final ComboBox<InventoryItem> combo = new ComboBox<>();
-            final TextField brandField = styledField("Brand (optional)");
+            final TextField brandField = styledField("Brand");
+            final ComboBox<String> typeCombo = new ComboBox<>();
+            final TextField rimField = styledField("Rim size");
+            final TextField hsnField = styledField("HSN/SAC");
             final TextField qtyField = styledField("0");
             final TextField unitPriceField = styledField("0.00");
+            final Label rateLbl = new Label("\u20b90.00");
+            final Label cgstLbl = new Label("\u20b90.00");
+            final Label sgstLbl = new Label("\u20b90.00");
             final Label lineTotalLbl = new Label("\u20b90.00");
             final Label stockLbl = new Label();
             final Button removeBtn = new Button("\u2715");
+            final VBox rimBox = new VBox(4);
             InventoryItem selected = null;
             VBox rowNode;
         }
@@ -478,16 +478,27 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
 
         Runnable[] updateTotalsRef = new Runnable[1];
         updateTotalsRef[0] = () -> {
-            double total = 0;
+            double taxableSum = 0, cgstSum = 0, sgstSum = 0, inclusiveSum = 0;
             for (ItemRow r : rows) {
                 double unit = parseDouble(r.unitPriceField);
                 int qty = 0;
                 try { qty = Math.max(0, Integer.parseInt(r.qtyField.getText().trim())); }
                 catch (NumberFormatException ignored) {}
-                double line = unit * qty;
-                r.lineTotalLbl.setText(UiUtil.money(line));
+                var split = com.sevatyres.util.GstUtil.splitLine(unit, qty);
+                r.rateLbl.setText(UiUtil.money(qty > 0
+                        ? com.sevatyres.util.GstUtil.round2(split.taxable() / qty) : 0));
+                r.cgstLbl.setText(UiUtil.money(split.cgst()));
+                r.sgstLbl.setText(UiUtil.money(split.sgst()));
+                r.lineTotalLbl.setText(UiUtil.money(split.inclusiveTotal()));
                 r.lineTotalLbl.setStyle("-fx-font-weight:700;");
-                total += line;
+                taxableSum += split.taxable();
+                cgstSum += split.cgst();
+                sgstSum += split.sgst();
+                inclusiveSum += split.inclusiveTotal();
+
+                boolean tyre = "Tyre".equals(r.typeCombo.getValue());
+                r.rimBox.setVisible(tyre);
+                r.rimBox.setManaged(tyre);
 
                 if (r.selected != null) {
                     InventoryItem fresh = AppServices.inventory().getById(r.selected.getId()).orElse(r.selected);
@@ -502,21 +513,23 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
                     r.stockLbl.setText("");
                 }
             }
+            double discPct = parseDouble(discountPctField);
+            double discAmt = parseDouble(discountAmtField);
+            if (discAmt <= 0.009 && discPct > 0) {
+                discAmt = com.sevatyres.util.GstUtil.round2(inclusiveSum * discPct / 100.0);
+            }
+            discAmt = Math.min(Math.max(0, discAmt), inclusiveSum);
+            double after = com.sevatyres.util.GstUtil.round2(inclusiveSum - discAmt);
+            double grand = com.sevatyres.util.GstUtil.roundToRupee(after);
             double paid = parseDouble(phonePeField) + parseDouble(acTransferField)
                     + parseDouble(cardSwipeField) + parseDouble(bajajField)
                     + parseDouble(cashField) + parseDouble(chequeField);
-            List<Tax> selected = new ArrayList<>();
-            for (CheckBox cb : taxChecks) {
-                if (cb.isSelected() && cb.getUserData() instanceof Tax t) selected.add(t);
-            }
-            double taxAmt = com.sevatyres.service.TaxService.computeTaxAmount(total, selected);
-            String taxLbl = com.sevatyres.service.TaxService.buildTaxLabel(selected);
-            double grand = total + taxAmt;
             double remaining = Math.max(0, grand - paid);
-            itemTotalLabel.setText(UiUtil.money(total));
-            taxTotalLabel.setText(UiUtil.money(taxAmt));
+            taxableLabel.setText(UiUtil.money(taxableSum));
+            cgstLabel.setText(UiUtil.money(cgstSum));
+            sgstLabel.setText(UiUtil.money(sgstSum));
+            discountLabel.setText(UiUtil.money(discAmt));
             grandTotalLabel.setText(UiUtil.money(grand));
-            taxInfoLabel.setText(taxLbl);
             paidTotalLabel.setText(UiUtil.money(paid));
             remainingLabel.setText(UiUtil.money(remaining));
             remainingLabel.setStyle(remaining > 0.009
@@ -531,6 +544,12 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
             r.qtyField.setPrefWidth(70);
             r.unitPriceField.setText("0.00");
             r.unitPriceField.setPrefWidth(90);
+            r.typeCombo.getItems().addAll("Product", "Service", "Tyre");
+            r.typeCombo.setValue("Product");
+            r.typeCombo.getStyleClass().add("combo");
+            r.typeCombo.setPrefWidth(120);
+            r.rimField.setPrefWidth(120);
+            r.hsnField.setPrefWidth(110);
             r.combo.getItems().addAll(inventoryItems);
             r.combo.setPromptText("Select from inventory\u2026");
             r.combo.getStyleClass().add("combo");
@@ -546,13 +565,26 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
                 }
             });
             r.combo.setButtonCell(r.combo.getCellFactory().call(null));
-            r.brandField.setPrefWidth(160);
+            r.brandField.setPrefWidth(140);
+            Label rimLbl = new Label("Rim");
+            rimLbl.setStyle("-fx-font-size:11px; -fx-text-fill: -text-muted;");
+            r.rimBox.getChildren().setAll(rimLbl, r.rimField);
+            r.rimBox.setVisible(false);
+            r.rimBox.setManaged(false);
 
             Runnable applyItem = () -> {
                 if (r.selected == null) return;
                 r.productField.setText(r.selected.getName());
                 r.unitPriceField.setText(String.format("%.2f", r.selected.getUnitPrice()));
                 r.brandField.setText(r.selected.getBrand() != null ? r.selected.getBrand() : "");
+                r.hsnField.setText(r.selected.getHsnSac() != null ? r.selected.getHsnSac() : "");
+                if (r.selected.getItemType() != null) {
+                    String t = r.selected.getItemType();
+                    if (t.equalsIgnoreCase("SERVICE")) r.typeCombo.setValue("Service");
+                    else if (t.equalsIgnoreCase("TYRE")) r.typeCombo.setValue("Tyre");
+                    else r.typeCombo.setValue("Product");
+                }
+                if (r.selected.getRimSize() != null) r.rimField.setText(r.selected.getRimSize());
                 updateTotalsRef[0].run();
             };
 
@@ -560,8 +592,6 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
                 InventoryItem item = r.combo.getValue();
                 if (item != null) { r.selected = item; applyItem.run(); }
             });
-
-            // Barcode scan / Enter: look up by barcode, then by exact name
             r.productField.setOnAction(e -> {
                 String code = r.productField.getText().trim();
                 if (code.isEmpty()) return;
@@ -581,25 +611,33 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
 
             r.qtyField.textProperty().addListener((o, a, b) -> updateTotalsRef[0].run());
             r.unitPriceField.textProperty().addListener((o, a, b) -> updateTotalsRef[0].run());
+            r.typeCombo.valueProperty().addListener((o, a, b) -> updateTotalsRef[0].run());
 
             r.removeBtn.getStyleClass().addAll("btn", "btn-secondary");
             r.removeBtn.setStyle("-fx-padding: 4 8;");
 
             Label qtyLbl = new Label("Qty:");
-            Label upLbl  = new Label("Unit \u20b9:");
+            Label upLbl  = new Label("Incl. \u20b9:");
+            Label rateHdr = new Label("Rate:");
+            Label cgstHdr = new Label("CGST:");
+            Label sgstHdr = new Label("SGST:");
             Label ltLbl  = new Label("Line:");
             Label brandLbl = new Label("Brand:");
-            upLbl.setStyle("-fx-font-size:11px; -fx-text-fill: -text-muted;");
-            ltLbl.setStyle("-fx-font-size:11px; -fx-text-fill: -text-muted;");
-            brandLbl.setStyle("-fx-font-size:11px; -fx-text-fill: -text-muted;");
+            Label typeLbl = new Label("Type:");
+            Label hsnLbl = new Label("HSN:");
+            for (Label l : new Label[]{upLbl, rateHdr, cgstHdr, sgstHdr, ltLbl, brandLbl, typeLbl, hsnLbl}) {
+                l.setStyle("-fx-font-size:11px; -fx-text-fill: -text-muted;");
+            }
 
             HBox productRow = new HBox(10, r.productField, r.combo);
             HBox.setHgrow(r.productField, Priority.ALWAYS);
             HBox.setHgrow(r.combo, Priority.ALWAYS);
             productRow.setAlignment(Pos.CENTER_LEFT);
 
-            HBox detailRow = new HBox(12, brandLbl, r.brandField, qtyLbl, r.qtyField,
-                    upLbl, r.unitPriceField, ltLbl, r.lineTotalLbl, r.stockLbl, r.removeBtn);
+            HBox detailRow = new HBox(10, typeLbl, r.typeCombo, r.rimBox, hsnLbl, r.hsnField,
+                    brandLbl, r.brandField, qtyLbl, r.qtyField,
+                    upLbl, r.unitPriceField, rateHdr, r.rateLbl, cgstHdr, r.cgstLbl,
+                    sgstHdr, r.sgstLbl, ltLbl, r.lineTotalLbl, r.stockLbl, r.removeBtn);
             detailRow.setAlignment(Pos.CENTER_LEFT);
 
             r.rowNode = new VBox(8, productRow, detailRow);
@@ -622,11 +660,8 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
         addMoreBtn.setOnAction(ev -> addRowRef[0].run());
 
         for (TextField tf : new TextField[]{phonePeField, acTransferField, cardSwipeField,
-                bajajField, cashField, chequeField}) {
+                bajajField, cashField, chequeField, discountPctField, discountAmtField}) {
             tf.textProperty().addListener((o, a, b) -> updateTotalsRef[0].run());
-        }
-        for (CheckBox cb : taxChecks) {
-            cb.selectedProperty().addListener((o, a, b) -> updateTotalsRef[0].run());
         }
 
         Label custHeader = new Label("CUSTOMER DETAILS (required when amount is on credit)");
@@ -650,7 +685,7 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
         TextField custNameField  = styledField("Customer name");
         TextField custPhoneField = styledField("Phone");
         TextField custEmailField = styledField("Email");
-        TextField custAddrField  = styledField("Address (optional)");
+        TextField custAddrField  = styledField("Address");
 
         existingCustCombo.setOnAction(e -> {
             Customer c = existingCustCombo.getValue();
@@ -664,7 +699,7 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
 
         VBox customerSection = new VBox(10,
                 custHeader,
-                labeledField("Existing Customer (optional)", existingCustCombo),
+                labeledField("Existing Customer", existingCustCombo),
                 labeledField("Name *", custNameField),
                 labeledField("Phone", custPhoneField),
                 labeledField("Email", custEmailField),
@@ -674,12 +709,14 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
 
         Label itemsHeader = new Label("ITEMS");
         itemsHeader.setStyle("-fx-font-size:11px; -fx-font-weight:700; -fx-text-fill: -neutral-400;");
-        Label taxHeader = new Label("TAXES (select all that apply)");
-        taxHeader.setStyle("-fx-font-size:11px; -fx-font-weight:700; -fx-text-fill: -neutral-400;");
+        Label discHeader = new Label("DISCOUNT");
+        discHeader.setStyle("-fx-font-size:11px; -fx-font-weight:700; -fx-text-fill: -neutral-400;");
         Label payHeader = new Label("PAYMENT METHODS");
         payHeader.setStyle("-fx-font-size:11px; -fx-font-weight:700; -fx-text-fill: -neutral-400;");
 
-        VBox taxForm = new VBox(8, taxHeader, taxChecksBox, taxInfoLabel);
+        VBox discForm = new VBox(10, discHeader,
+                labeledField("Discount %", discountPctField),
+                labeledField("Discount Amount \u20b9", discountAmtField));
 
         VBox payForm = new VBox(10, payHeader,
                 labeledField("PhonePe (UPI) \u20b9", phonePeField),
@@ -689,9 +726,11 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
                 labeledField("Cash \u20b9", cashField),
                 labeledField("Cheque \u20b9", chequeField));
 
-        HBox summaryRow = new HBox(18,
-                new VBox(4, new Label("Subtotal") {{ setStyle("-fx-font-size:11px;"); }}, itemTotalLabel),
-                new VBox(4, new Label("Tax") {{ setStyle("-fx-font-size:11px;"); }}, taxTotalLabel),
+        HBox summaryRow = new HBox(14,
+                new VBox(4, new Label("Taxable") {{ setStyle("-fx-font-size:11px;"); }}, taxableLabel),
+                new VBox(4, new Label("CGST 9%") {{ setStyle("-fx-font-size:11px;"); }}, cgstLabel),
+                new VBox(4, new Label("SGST 9%") {{ setStyle("-fx-font-size:11px;"); }}, sgstLabel),
+                new VBox(4, new Label("Discount") {{ setStyle("-fx-font-size:11px;"); }}, discountLabel),
                 new VBox(4, new Label("Grand Total") {{ setStyle("-fx-font-size:11px;"); }}, grandTotalLabel),
                 new VBox(4, new Label("Paid") {{ setStyle("-fx-font-size:11px;"); }}, paidTotalLabel),
                 new VBox(4, new Label("Remaining (Credit)") {{ setStyle("-fx-font-size:11px;"); }}, remainingLabel));
@@ -701,11 +740,11 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
         content.getChildren().addAll(
                 new VBox(4, title, sub), new Separator(),
                 labeledField("Date", datePicker),
-                labeledField("Bill No", billNoField),
+                labeledField("Invoice No (auto)", billNoField),
                 new Separator(),
                 itemsHeader, itemsBox, addMoreBtn,
                 new Separator(),
-                taxForm,
+                discForm,
                 new Separator(),
                 summaryRow,
                 new Separator(),
@@ -733,6 +772,11 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
                             + (r.selected != null ? r.selected.getName() : name) + "\".");
                     return;
                 }
+                if ("Tyre".equals(r.typeCombo.getValue())
+                        && (r.rimField.getText() == null || r.rimField.getText().isBlank())) {
+                    err.setText("Rim size is required for tyre items.");
+                    return;
+                }
                 double unit = parseDouble(r.unitPriceField);
                 Integer invId = null;
                 if (r.selected != null) {
@@ -749,22 +793,29 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
                     err.setText("Enter a unit price for \"" + name + "\".");
                     return;
                 }
-                lineItems.add(new SaleTransactionItem(invId, name, qty, unit));
+                SaleTransactionItem line = new SaleTransactionItem(invId, name, qty, unit);
+                String typeUi = r.typeCombo.getValue() != null ? r.typeCombo.getValue() : "Product";
+                line.setItemType(typeUi.toUpperCase());
+                line.setRimSize(r.rimField.getText().trim());
+                line.setHsnSac(r.hsnField.getText().trim());
+                lineItems.add(line);
             }
             if (lineItems.isEmpty()) { err.setText("Add at least one item."); return; }
 
             double paid = parseDouble(phonePeField) + parseDouble(acTransferField)
                     + parseDouble(cardSwipeField) + parseDouble(bajajField)
                     + parseDouble(cashField) + parseDouble(chequeField);
-            double itemsTotal = lineItems.stream().mapToDouble(SaleTransactionItem::getLineTotal).sum();
-            List<Tax> selectedTaxes = new ArrayList<>();
-            for (CheckBox cb : taxChecks) {
-                if (cb.isSelected() && cb.getUserData() instanceof Tax t) selectedTaxes.add(t);
+            double inclusive = 0;
+            for (SaleTransactionItem it : lineItems) {
+                inclusive += com.sevatyres.util.GstUtil.splitLine(it.getUnitPrice(), it.getQuantity()).inclusiveTotal();
             }
-            double taxAmt = com.sevatyres.service.TaxService.computeTaxAmount(itemsTotal, selectedTaxes);
-            String taxLbl = com.sevatyres.service.TaxService.buildTaxLabel(selectedTaxes);
-            double grandTotal = itemsTotal + taxAmt;
-            double remaining = Math.max(0, grandTotal - paid);
+            double discPct = parseDouble(discountPctField);
+            double discAmt = parseDouble(discountAmtField);
+            if (discAmt <= 0.009 && discPct > 0) {
+                discAmt = com.sevatyres.util.GstUtil.round2(inclusive * discPct / 100.0);
+            }
+            double grand = com.sevatyres.util.GstUtil.roundToRupee(Math.max(0, inclusive - discAmt));
+            double remaining = Math.max(0, grand - paid);
 
             String custName = custNameField.getText().trim();
             if (remaining > 0.009 && custName.isEmpty()) {
@@ -773,7 +824,7 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
             }
 
             SaleTransaction tx = new SaleTransaction();
-            tx.setBillNo(billNoField.getText().trim());
+            tx.setBillNo(""); // auto ST-YY/YY-NNN
             tx.setSaleDate(datePicker.getValue() != null ? datePicker.getValue() : LocalDate.now());
             tx.setPhonePe(parseDouble(phonePeField));
             tx.setAccountTransfer(parseDouble(acTransferField));
@@ -781,16 +832,8 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
             tx.setBajajFinance(parseDouble(bajajField));
             tx.setCash(parseDouble(cashField));
             tx.setCheque(parseDouble(chequeField));
-            tx.setSubtotal(itemsTotal);
-            tx.setTaxAmount(taxAmt);
-            tx.setTaxLabel(taxLbl);
-            tx.setTotal(grandTotal);
-
-            List<SaleTaxLine> taxLines = new ArrayList<>();
-            for (Tax t : selectedTaxes) {
-                double lineTax = Math.round(itemsTotal * (t.getRate() / 100.0) * 100.0) / 100.0;
-                taxLines.add(new SaleTaxLine(t.getId(), t.getName(), t.getRate(), lineTax));
-            }
+            tx.setDiscountPercent(discPct);
+            tx.setDiscountAmount(discAmt);
 
             SaleTransactionItem first = lineItems.get(0);
             tx.setParticulars(first.getItemName() + (lineItems.size() > 1
@@ -798,7 +841,6 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
             tx.setQuantity(first.getQuantity());
             tx.setUnitPrice(first.getUnitPrice());
             tx.setInventoryItemId(first.getInventoryId());
-            // Brand from first item row that produced a line item
             String saleBrand = "";
             for (ItemRow r : rows) {
                 if (r.productField.getText().trim().isEmpty() && r.selected == null) continue;
@@ -821,17 +863,15 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
                 tx.setCustomerAddress(custAddrField.getText().trim());
             }
 
-            SaleTransaction saved = AppServices.saleTransactions().save(tx, lineItems, taxLines);
+            SaleTransaction saved = AppServices.saleTransactions().save(tx, lineItems);
             stage.close();
             if (onSaved != null) onSaved.accept(saved);
         });
 
-        presentDialog(stage, content, buttonRow(cancelBtn, saveBtn), 860);
+        presentDialog(stage, content, buttonRow(cancelBtn, saveBtn), 920);
     }
 
-    // â”€â”€â”€ View Sale Transaction dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-    // â”€â”€â”€ View Sale Transaction dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // --- View Sale Transaction dialog ---
 
     public static void showViewSaleTransaction(SaleTransaction t) {
         Stage stage = buildDialogStage("Transaction Details");
@@ -850,10 +890,11 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
                 labeledField("Bajaj Finance",  readonlyField(UiUtil.money(t.getBajajFinance()))),
                 labeledField("Cash",           readonlyField(UiUtil.money(t.getCash()))),
                 labeledField("Cheque",         readonlyField(UiUtil.money(t.getCheque()))),
-                labeledField("Subtotal",       readonlyField(UiUtil.money(t.getSubtotal() > 0 ? t.getSubtotal() : t.getItemTotal()))),
-                labeledField("Tax",            readonlyField(
-                        (t.getTaxLabel() != null ? t.getTaxLabel() + " — " : "")
-                                + UiUtil.money(t.getTaxAmount()))),
+                labeledField("Taxable",        readonlyField(UiUtil.money(t.getSubtotal() > 0 ? t.getSubtotal() : t.getItemTotal()))),
+                labeledField("CGST 9%",        readonlyField(UiUtil.money(t.getCgstTotal()))),
+                labeledField("SGST 9%",        readonlyField(UiUtil.money(t.getSgstTotal()))),
+                labeledField("Discount",       readonlyField(UiUtil.money(t.getDiscountAmount()))),
+                labeledField("Round Off",      readonlyField(UiUtil.money(t.getRoundOff()))),
                 labeledField("Credit",         readonlyField(UiUtil.money(t.getCreditAmount()))),
                 labeledField("Total",          readonlyField(UiUtil.money(t.getTotal()))));
 
@@ -1116,21 +1157,23 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
         Stage stage = buildDialogStage("Add Inventory Item");
         VBox content = contentVBox();
         Label title = dialogTitle("Add Item");
-        Label sub   = dialogSub("Enter details. Attach a barcode so items can be scanned in transactions.");
+        Label sub   = dialogSub("Unit price is inclusive of CGST 9% + SGST 9%. Attach a barcode to scan in transactions.");
 
         TextField nameField    = styledField("Item name");
-        TextField brandField   = styledField("Brand (optional)");
+        TextField brandField   = styledField("Brand");
+        TextField hsnField     = styledField("HSN/SAC");
         TextField qtyField     = styledField("0");
         TextField priceField   = styledField("0.00");
-        TextField barcodeField = styledField("Barcode (scan or type, optional)");
+        TextField barcodeField = styledField("Barcode (scan or type)");
         Label barcodeHint = new Label("Attach a USB barcode scanner to auto-fill this field.");
         barcodeHint.setStyle("-fx-font-size:11px; -fx-text-fill: -neutral-400;");
 
         VBox form = new VBox(14,
                 labeledField("Name *", nameField),
                 labeledField("Brand", brandField),
+                labeledField("HSN/SAC", hsnField),
                 labeledField("Quantity", qtyField),
-                labeledField("Unit Price (\u20b9)", priceField),
+                labeledField("Unit Price incl. tax (\u20b9)", priceField),
                 new VBox(4, labeledField("Barcode", barcodeField), barcodeHint));
 
         Label err = errLabel();
@@ -1155,6 +1198,7 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
             InventoryItem item = new InventoryItem();
             item.setName(name);
             item.setBrand(brandField.getText().trim());
+            item.setHsnSac(hsnField.getText().trim());
             item.setQuantity(qty);
             item.setUnitPrice(price);
             String bc = barcodeField.getText().trim();
@@ -1182,24 +1226,27 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
     // â”€â”€â”€ Edit Inventory Item dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public static void showEditItem(InventoryItem item, Consumer<InventoryItem> onSaved) {
-        Stage stage = buildDialogStage("Edit Item â€” " + item.getName());
+        Stage stage = buildDialogStage("Edit Item — " + item.getName());
         VBox content = contentVBox();
         Label title = dialogTitle("Edit Item");
-        Label sub   = dialogSub("Update the details for \"" + item.getName() + "\".");
+        Label sub   = dialogSub("Update the details for \"" + item.getName() + "\". Price is tax-inclusive.");
 
         TextField nameField    = styledField("Item name");  nameField.setText(item.getName());
-        TextField brandField   = styledField("Brand (optional)");
+        TextField brandField   = styledField("Brand");
         if (item.getBrand() != null) brandField.setText(item.getBrand());
+        TextField hsnField     = styledField("HSN/SAC");
+        if (item.getHsnSac() != null) hsnField.setText(item.getHsnSac());
         TextField qtyField     = styledField("0");          qtyField.setText(String.valueOf(item.getQuantity()));
         TextField priceField   = styledField("0.00");       priceField.setText(String.format("%.2f", item.getUnitPrice()));
-        TextField barcodeField = styledField("Barcode (scan or type, optional)");
+        TextField barcodeField = styledField("Barcode (scan or type)");
         if (item.getBarcode() != null) barcodeField.setText(item.getBarcode());
 
         VBox form = new VBox(14,
                 labeledField("Name *", nameField),
                 labeledField("Brand", brandField),
+                labeledField("HSN/SAC", hsnField),
                 labeledField("Quantity", qtyField),
-                labeledField("Unit Price (\u20b9)", priceField),
+                labeledField("Unit Price incl. tax (\u20b9)", priceField),
                 labeledField("Barcode", barcodeField));
 
         Label err = errLabel();
@@ -1222,6 +1269,7 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
             catch (NumberFormatException ex) { err.setText("Unit price must be a non-negative number."); return; }
             item.setName(name);
             item.setBrand(brandField.getText().trim());
+            item.setHsnSac(hsnField.getText().trim());
             item.setQuantity(qty);
             item.setUnitPrice(price);
             String bc = barcodeField.getText().trim();
@@ -1246,7 +1294,216 @@ public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
         presentDialog(stage, content, buttonRow(cancelBtn, confirmBtn));
     }
 
-    // â”€â”€â”€ Stock Adjustment dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public static void showPurchaseInfo(PurchaseInfo existing, Consumer<PurchaseInfo> onSaved) {
+        Stage stage = buildDialogStage(existing == null ? "Add Purchase Info" : "Edit Purchase Info");
+        VBox content = contentVBox();
+        Label title = dialogTitle(existing == null ? "Add Purchase Info" : "Edit Purchase Info");
+        Label sub = dialogSub("Record item name and buying price.");
+
+        ComboBox<InventoryItem> invCombo = new ComboBox<>();
+        invCombo.getItems().addAll(AppServices.inventory().getAll());
+        invCombo.setPromptText("Link inventory item\u2026");
+        invCombo.setMaxWidth(Double.MAX_VALUE);
+        invCombo.getStyleClass().add("combo");
+        invCombo.setCellFactory(lv -> new ListCell<>() {
+            @Override protected void updateItem(InventoryItem it, boolean empty) {
+                super.updateItem(it, empty);
+                setText(empty || it == null ? null : it.getName());
+            }
+        });
+        invCombo.setButtonCell(invCombo.getCellFactory().call(null));
+
+        TextField nameField = styledField("Item name");
+        TextField priceField = styledField("0.00");
+        TextField notesField = styledField("Notes");
+        if (existing != null) {
+            nameField.setText(existing.getItemName());
+            priceField.setText(String.format("%.2f", existing.getBuyingPrice()));
+            if (existing.getNotes() != null) notesField.setText(existing.getNotes());
+            if (existing.getInventoryId() != null) {
+                invCombo.getItems().stream()
+                        .filter(i -> i.getId() == existing.getInventoryId())
+                        .findFirst().ifPresent(invCombo::setValue);
+            }
+        }
+        invCombo.setOnAction(e -> {
+            InventoryItem it = invCombo.getValue();
+            if (it != null && nameField.getText().isBlank()) nameField.setText(it.getName());
+        });
+
+        VBox form = new VBox(14,
+                labeledField("Inventory Item", invCombo),
+                labeledField("Item Name *", nameField),
+                labeledField("Buying Price (\u20b9)", priceField),
+                labeledField("Notes", notesField));
+        Label err = errLabel();
+        content.getChildren().addAll(new VBox(4, title, sub), new Separator(), form, err);
+
+        Button cancelBtn = new Button("Cancel");
+        cancelBtn.getStyleClass().addAll("btn", "btn-secondary");
+        Button saveBtn = new Button("Save");
+        saveBtn.getStyleClass().add("btn");
+        cancelBtn.setOnAction(e -> stage.close());
+        saveBtn.setOnAction(e -> {
+            String name = nameField.getText().trim();
+            if (name.isEmpty()) { err.setText("Item name is required."); return; }
+            double price;
+            try {
+                price = Double.parseDouble(priceField.getText().trim());
+                if (price < 0) throw new NumberFormatException();
+            } catch (NumberFormatException ex) {
+                err.setText("Buying price must be a non-negative number.");
+                return;
+            }
+            PurchaseInfo p = existing != null ? existing : new PurchaseInfo();
+            InventoryItem linked = invCombo.getValue();
+            p.setInventoryId(linked != null ? linked.getId() : null);
+            p.setItemName(name);
+            p.setBuyingPrice(price);
+            p.setNotes(notesField.getText().trim());
+            try {
+                PurchaseInfo saved = AppServices.purchases().save(p);
+                stage.close();
+                if (onSaved != null) onSaved.accept(saved);
+            } catch (Exception ex) {
+                err.setText(ex.getMessage());
+            }
+        });
+        presentDialog(stage, content, buttonRow(cancelBtn, saveBtn));
+    }
+
+    /**
+     * Opens a PDF file chooser, scans items, shows a preview, then imports confirmed rows
+     * into Inventory + Purchase Info.
+     */
+    public static void pickPdfAndImport(Runnable onDone) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Upload PDF to add items");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF files", "*.pdf"));
+        File file = chooser.showOpenDialog(App.getScene().getWindow());
+        if (file == null) return;
+        try {
+            InventoryPdfImportService svc = new InventoryPdfImportService();
+            List<InventoryPdfImportService.ParsedItem> parsed = svc.scanPdf(file);
+            if (parsed.isEmpty()) {
+                info("PDF Import",
+                        "No line items could be read from \"" + file.getName() + "\".\n\n"
+                                + "Use a tax invoice PDF with HSN, Qty, Rate and Amount columns.");
+                return;
+            }
+            showPdfImportPreview(file.getName(), parsed, selected -> {
+                InventoryPdfImportService.ImportResult result = svc.commit(selected);
+                StringBuilder msg = new StringBuilder();
+                msg.append("Added ").append(result.added()).append(" item(s)");
+                if (result.skipped() > 0) msg.append(", skipped ").append(result.skipped());
+                msg.append(".");
+                if (!result.messages().isEmpty()) {
+                    msg.append("\n\n");
+                    result.messages().stream().limit(15)
+                            .forEach(m -> msg.append("• ").append(m).append("\n"));
+                }
+                info("PDF Import", msg.toString());
+                if (onDone != null) onDone.run();
+            });
+        } catch (Exception ex) {
+            Throwable root = ex;
+            while (root.getCause() != null && root.getCause() != root) root = root.getCause();
+            String detail = root.getMessage() != null ? root.getMessage() : ex.toString();
+            info("PDF Import Failed", "Could not read the PDF.\n\n" + detail);
+        }
+    }
+
+    public static void showPdfImportPreview(String fileName,
+            List<InventoryPdfImportService.ParsedItem> items,
+            Consumer<List<InventoryPdfImportService.ParsedItem>> onConfirm) {
+        Stage stage = buildDialogStage("Preview PDF Import", 920, 1100);
+        VBox content = contentVBox();
+        content.setPrefWidth(900);
+        Label title = dialogTitle("Preview items from PDF");
+        Label sub = dialogSub("File: " + fileName
+                + "\nReview the items below, uncheck any you do not want, then confirm to add them to Inventory and Purchase Info.");
+
+        class PreviewRow {
+            final SimpleBooleanProperty include = new SimpleBooleanProperty(true);
+            final InventoryPdfImportService.ParsedItem item;
+            PreviewRow(InventoryPdfImportService.ParsedItem item) { this.item = item; }
+        }
+
+        TableView<PreviewRow> table = new TableView<>();
+        table.setEditable(true);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        table.setPrefHeight(360);
+
+        TableColumn<PreviewRow, Boolean> includeCol = new TableColumn<>("Add");
+        includeCol.setPrefWidth(60);
+        includeCol.setEditable(true);
+        includeCol.setCellValueFactory(c -> c.getValue().include);
+        includeCol.setCellFactory(CheckBoxTableCell.forTableColumn(includeCol));
+
+        TableColumn<PreviewRow, String> nameCol = new TableColumn<>("Item Name");
+        nameCol.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().item.name()));
+
+        TableColumn<PreviewRow, String> hsnCol = new TableColumn<>("HSN/SAC");
+        hsnCol.setPrefWidth(100);
+        hsnCol.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(
+                c.getValue().item.hsn() != null ? c.getValue().item.hsn() : "—"));
+
+        TableColumn<PreviewRow, Number> qtyCol = new TableColumn<>("Qty");
+        qtyCol.setPrefWidth(70);
+        qtyCol.setCellValueFactory(c -> new javafx.beans.property.SimpleIntegerProperty(c.getValue().item.qty()));
+
+        TableColumn<PreviewRow, String> unitCol = new TableColumn<>("Unit Price (incl.)");
+        unitCol.setPrefWidth(130);
+        unitCol.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(
+                UiUtil.money(c.getValue().item.inclusiveUnit())));
+
+        TableColumn<PreviewRow, String> buyCol = new TableColumn<>("Buying Price");
+        buyCol.setPrefWidth(120);
+        buyCol.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(
+                UiUtil.money(c.getValue().item.buyingPrice())));
+
+        table.getColumns().addAll(includeCol, nameCol, hsnCol, qtyCol, unitCol, buyCol);
+        List<PreviewRow> rows = items.stream().map(PreviewRow::new).toList();
+        table.getItems().setAll(rows);
+
+        Label countLbl = new Label(items.size() + " item(s) found");
+        countLbl.setStyle("-fx-font-size:12px; -fx-text-fill: -text-muted;");
+
+        Button selectAll = new Button("Select all");
+        selectAll.getStyleClass().addAll("btn", "btn-ghost");
+        selectAll.setOnAction(e -> rows.forEach(r -> r.include.set(true)));
+        Button selectNone = new Button("Select none");
+        selectNone.getStyleClass().addAll("btn", "btn-ghost");
+        selectNone.setOnAction(e -> rows.forEach(r -> r.include.set(false)));
+
+        HBox tools = new HBox(10, countLbl, new Region(), selectAll, selectNone);
+        HBox.setHgrow(tools.getChildren().get(1), Priority.ALWAYS);
+        tools.setAlignment(Pos.CENTER_LEFT);
+
+        Label err = errLabel();
+        content.getChildren().addAll(new VBox(4, title, sub), new Separator(), tools, table, err);
+
+        Button cancelBtn = new Button("Cancel");
+        cancelBtn.getStyleClass().addAll("btn", "btn-secondary");
+        Button confirmBtn = new Button("Add selected items");
+        confirmBtn.getStyleClass().add("btn");
+        cancelBtn.setOnAction(e -> stage.close());
+        confirmBtn.setOnAction(e -> {
+            List<InventoryPdfImportService.ParsedItem> selected = rows.stream()
+                    .filter(r -> r.include.get())
+                    .map(r -> r.item)
+                    .toList();
+            if (selected.isEmpty()) {
+                err.setText("Select at least one item to add.");
+                return;
+            }
+            stage.close();
+            if (onConfirm != null) onConfirm.accept(selected);
+        });
+        presentDialog(stage, content, buttonRow(cancelBtn, confirmBtn), 900);
+    }
+
+    // --- Stock Adjustment dialog ---
 
     public static void showStockAdjust(List<InventoryItem> items, BiConsumer<Integer, Integer> onAdjust) {
         Stage stage = buildDialogStage("Adjust Stock");

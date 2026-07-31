@@ -148,7 +148,34 @@ public final class DatabaseConfig {
             "INSERT INTO Company_Info(company_id, company_name, city, state, pincode) " +
                 "SELECT 1, 'Seva Tyres', 'Bhubaneswar', 'Odisha', '751001' " +
                 "WHERE NOT EXISTS (SELECT 1 FROM Company_Info WHERE company_id = 1)",
-            "ALTER TABLE Company_Info ADD COLUMN alert_email VARCHAR(200)"
+            "ALTER TABLE Company_Info ADD COLUMN alert_email VARCHAR(200)",
+            "ALTER TABLE Inventory ADD COLUMN hsn_sac VARCHAR(50)",
+            "ALTER TABLE Inventory ADD COLUMN item_type VARCHAR(20) DEFAULT 'PRODUCT'",
+            "ALTER TABLE Inventory ADD COLUMN rim_size VARCHAR(50)",
+            "ALTER TABLE Sale_Transaction ADD COLUMN cgst_total DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "ALTER TABLE Sale_Transaction ADD COLUMN sgst_total DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "ALTER TABLE Sale_Transaction ADD COLUMN discount_percent DECIMAL(8,4) NOT NULL DEFAULT 0",
+            "ALTER TABLE Sale_Transaction ADD COLUMN discount_amount DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "ALTER TABLE Sale_Transaction ADD COLUMN round_off DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "ALTER TABLE Sale_Transaction ALTER COLUMN bill_no TYPE VARCHAR(40)",
+            "ALTER TABLE Sale_Transaction_Item ADD COLUMN hsn_sac VARCHAR(50)",
+            "ALTER TABLE Sale_Transaction_Item ADD COLUMN item_type VARCHAR(20)",
+            "ALTER TABLE Sale_Transaction_Item ADD COLUMN rim_size VARCHAR(50)",
+            "ALTER TABLE Sale_Transaction_Item ADD COLUMN rate DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "ALTER TABLE Sale_Transaction_Item ADD COLUMN cgst_amount DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "ALTER TABLE Sale_Transaction_Item ADD COLUMN sgst_amount DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "ALTER TABLE Sale_Transaction_Item ADD COLUMN taxable_amount DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "CREATE TABLE IF NOT EXISTS Purchase_Info (" +
+                "purchase_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY," +
+                "inventory_id INTEGER," +
+                "item_name VARCHAR(200) NOT NULL," +
+                "buying_price DECIMAL(15,2) NOT NULL DEFAULT 0," +
+                "notes VARCHAR(500))",
+            "CREATE TABLE IF NOT EXISTS Invoice_Sequence (" +
+                "fy_label VARCHAR(10) PRIMARY KEY," +
+                "last_seq INTEGER NOT NULL DEFAULT 0)",
+            "INSERT INTO Invoice_Sequence(fy_label, last_seq) SELECT '26/27', 69 " +
+                "WHERE NOT EXISTS (SELECT 1 FROM Invoice_Sequence WHERE fy_label = '26/27')"
         };
         try (Connection conn = get(); Statement stmt = conn.createStatement()) {
             for (String sql : migrations) {

@@ -2,6 +2,7 @@ package com.sevatyres.model;
 
 /**
  * Inventory item with stock status support.
+ * unitPrice is tax-inclusive (CGST 9% + SGST 9%).
  */
 public class InventoryItem {
     private int id;
@@ -13,9 +14,11 @@ public class InventoryItem {
     private int reorderLevel;
     private double unitPrice;
     private String barcode;
+    private String hsnSac;
+    private String itemType; // PRODUCT, SERVICE, TYRE
+    private String rimSize;
 
-    public InventoryItem() {
-    }
+    public InventoryItem() {}
 
     public InventoryItem(int id, String name, String sku, String category,
                          int quantity, int reorderLevel, double unitPrice) {
@@ -54,6 +57,19 @@ public class InventoryItem {
 
     public String getBarcode() { return barcode; }
     public void setBarcode(String barcode) { this.barcode = barcode; }
+
+    public String getHsnSac() { return hsnSac; }
+    public void setHsnSac(String hsnSac) { this.hsnSac = hsnSac; }
+
+    public String getItemType() { return itemType; }
+    public void setItemType(String itemType) { this.itemType = itemType; }
+
+    public String getRimSize() { return rimSize; }
+    public void setRimSize(String rimSize) { this.rimSize = rimSize; }
+
+    public boolean isTyre() {
+        return itemType != null && itemType.equalsIgnoreCase("TYRE");
+    }
 
     /** @deprecated Use getStockStatus() instead */
     public boolean isLowStock() {

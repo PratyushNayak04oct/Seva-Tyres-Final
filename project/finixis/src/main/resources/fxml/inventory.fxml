@@ -11,6 +11,9 @@
             <Label text="Manage stock levels and items" styleClass="page-subtitle"/>
         </VBox>
         <Region HBox.hgrow="ALWAYS"/>
+        <Button fx:id="uploadPdfBtn" text="Upload PDF to add items" styleClass="btn,btn-secondary" onAction="#onUploadPdf">
+            <graphic><FontIcon iconLiteral="fas-file-pdf"/></graphic>
+        </Button>
         <Button fx:id="stockBtn" text="Stock In / Out" styleClass="btn,btn-secondary" onAction="#onStock">
             <graphic><FontIcon iconLiteral="fas-truck"/></graphic>
         </Button>
@@ -26,12 +29,13 @@
 
     <TableView fx:id="table" VBox.vgrow="ALWAYS">
         <columns>
-            <TableColumn fx:id="nameCol" text="Item" prefWidth="220"/>
-            <TableColumn fx:id="skuCol" text="Brand" prefWidth="140"/>
-            <TableColumn fx:id="catCol" text="Category" prefWidth="140"/>
-            <TableColumn fx:id="qtyCol" text="Qty" prefWidth="80"/>
-            <TableColumn fx:id="priceCol" text="Unit Price" prefWidth="110"/>
-            <TableColumn fx:id="stockCol" text="Status" prefWidth="120"/>
+            <TableColumn fx:id="nameCol" text="Item" prefWidth="200"/>
+            <TableColumn fx:id="skuCol" text="Brand" prefWidth="120"/>
+            <TableColumn fx:id="hsnCol" text="HSN/SAC" prefWidth="110"/>
+            <TableColumn fx:id="catCol" text="Category" prefWidth="120"/>
+            <TableColumn fx:id="qtyCol" text="Qty" prefWidth="70"/>
+            <TableColumn fx:id="priceCol" text="Unit Price (incl. tax)" prefWidth="140"/>
+            <TableColumn fx:id="stockCol" text="Status" prefWidth="110"/>
             <TableColumn fx:id="actionCol" text="Actions" minWidth="220" prefWidth="240" sortable="false"/>
         </columns>
     </TableView>

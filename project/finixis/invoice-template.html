@@ -1,255 +1,179 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <title>Invoice {bill_no}</title>
-  <style>
-    :root {
-      --ink: #111827;
-      --muted: #6b7280;
-      --line: #e5e7eb;
-      --accent: #1e3a5f;
-      --soft: #f8fafc;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      padding: 40px 48px;
-      font-family: "Segoe UI", Calibri, Arial, sans-serif;
-      color: var(--ink);
-      background: #fff;
-      font-size: 14px;
-      line-height: 1.45;
-    }
-    .sheet { max-width: 800px; margin: 0 auto; }
-    .top {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 24px;
-      margin-bottom: 28px;
-    }
-    .brand .name {
-      font-size: 28px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      color: var(--accent);
-      margin: 0 0 8px;
-    }
-    .brand .addr, .brand .contact {
-      margin: 0;
-      color: var(--muted);
-      font-size: 13px;
-    }
-    .inv-head { text-align: right; }
-    .inv-head .label {
-      font-size: 28px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      margin: 0;
-    }
-    .inv-head .bill {
-      font-size: 16px;
-      font-weight: 600;
-      margin: 8px 0 4px;
-    }
-    .status {
-      display: inline-block;
-      margin-top: 6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: #eff6ff;
-      color: #1d4ed8;
-      font-size: 12px;
-      font-weight: 600;
-    }
-    .status.paid { background: #ecfdf5; color: #047857; }
-    .status.unpaid { background: #fef2f2; color: #b91c1c; }
-    hr.rule {
-      border: none;
-      border-top: 2px solid var(--accent);
-      margin: 0 0 24px;
-    }
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 28px;
-      margin-bottom: 28px;
-    }
-    .section-title {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--muted);
-      font-weight: 700;
-      margin: 0 0 8px;
-    }
-    .customer-name {
-      font-size: 18px;
-      font-weight: 700;
-      margin: 0 0 6px;
-    }
-    .muted { color: var(--muted); margin: 2px 0; }
-    .details-table { width: 100%; border-collapse: collapse; }
-    .details-table td {
-      padding: 4px 0;
-      vertical-align: top;
-    }
-    .details-table td:first-child {
-      color: var(--muted);
-      width: 42%;
-    }
-    table.items {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 8px 0 20px;
-    }
-    table.items th {
-      text-align: left;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--muted);
-      border-bottom: 1px solid var(--line);
-      padding: 10px 8px;
-      background: var(--soft);
-    }
-    table.items td {
-      padding: 14px 8px;
-      border-bottom: 1px solid var(--line);
-      vertical-align: top;
-    }
-    table.items .num { width: 40px; color: var(--muted); }
-    table.items .qty { width: 60px; text-align: center; }
-    table.items .money { width: 110px; text-align: right; white-space: nowrap; }
-    .item-name { font-weight: 600; margin: 0; }
-    .item-sub { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
-    .totals {
-      width: 320px;
-      margin-left: auto;
-      margin-bottom: 28px;
-    }
-    .totals .row {
-      display: flex;
-      justify-content: space-between;
-      padding: 6px 0;
-      color: var(--muted);
-    }
-    .totals .row.strong {
-      color: var(--ink);
-      font-weight: 700;
-      font-size: 15px;
-      border-top: 1px solid var(--line);
-      margin-top: 6px;
-      padding-top: 10px;
-    }
-    .totals .row.balance {
-      color: #b91c1c;
-      font-weight: 700;
-    }
-    .pay-box {
-      background: var(--soft);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 16px 18px;
-      margin-bottom: 24px;
-    }
-    .pay-box .section-title { margin-bottom: 10px; }
-    .pay-box table { width: 100%; border-collapse: collapse; }
-    .pay-box td { padding: 4px 0; }
-    .pay-box td:first-child { color: var(--muted); width: 38%; }
-    .note { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
-    .footer {
-      border-top: 1px solid var(--line);
-      padding-top: 16px;
-      color: var(--muted);
-      font-size: 12px;
-    }
-    .footer p { margin: 4px 0; }
-    @media print {
-      body { padding: 16px; }
-      .status { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-    }
-  </style>
+<meta charset="UTF-8"/>
+<title>Tax Invoice {invoice_number}</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; font-size: 11px; color: #111; margin: 0; }
+  .invoice { border: 1px solid #000; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { border: 1px solid #000; padding: 4px 6px; vertical-align: top; }
+  .no-border td { border: none; }
+  .center { text-align: center; }
+  .right { text-align: right; }
+  .bold { font-weight: 700; }
+  .title { font-size: 16px; font-weight: 700; letter-spacing: 1px; text-align: center; padding: 6px; }
+  .muted { color: #333; }
+  .small { font-size: 10px; }
+  .items th { background: #f3f3f3; font-size: 10px; }
+  .items td { font-size: 11px; }
+  .totals td { border: none; border-top: 1px solid #000; }
+  .sign td { height: 54px; }
+  .footer { text-align: center; font-size: 10px; padding: 6px; border-top: 1px solid #000; }
+  .company-name { font-size: 14px; font-weight: 700; }
+  @media print { .noprint { display: none; } body { margin: 0; } }
+</style>
 </head>
 <body>
-  <div class="sheet">
-    <div class="top">
-      <div class="brand">
-        <p class="name">{company_name}</p>
-        <p class="addr">{company_address_line1}</p>
-        <p class="addr">{company_city_line}</p>
-        <p class="contact">{company_contact}</p>
-      </div>
-      <div class="inv-head">
-        <p class="label">INVOICE</p>
-        <p class="bill"># {bill_no}</p>
-        <span class="status {status_class}">{status}</span>
-      </div>
-    </div>
-    <hr class="rule"/>
+<div class="noprint" style="padding:10px;text-align:right;">
+  <button onclick="window.print()">Print / Save as PDF</button>
+</div>
+<div class="invoice">
+  <div class="title">TAX INVOICE</div>
+  <table>
+    <tr>
+      <td rowspan="2" style="width:55%">
+        <div class="company-name">{company_name}</div>
+        <div>{company_address_line1}</div>
+        <div>{company_city_line}</div>
+        <div class="small">GSTIN/UIN: {company_gstin}</div>
+        <div class="small">State Name: {company_state}, Code: {company_state_code}</div>
+      </td>
+      <td style="width:22.5%"><span class="bold">Invoice No.</span><br/>{invoice_number}</td>
+      <td style="width:22.5%"><span class="bold">Dated</span><br/>{invoice_date}</td>
+    </tr>
+    <tr>
+      <td><span class="bold">Reference No. &amp; Date</span><br/>{reference_line}</td>
+      <td><span class="bold">Mode/Terms of Payment</span><br/>{payment_mode}</td>
+    </tr>
+    <tr>
+      <td>
+        <div class="bold">Buyer (Bill to)</div>
+        <div class="bold">{customer_name}</div>
+        <div>{customer_address}</div>
+        <div class="small">Phone: {customer_phone}</div>
+        <div class="small">GSTIN/UIN: {customer_gstin}</div>
+        <div class="small">State Name: {customer_state}, Code: {customer_state_code}</div>
+        <div class="small">Place of Supply: {place_of_supply}</div>
+      </td>
+      <td>
+        <span class="bold">Buyer's Order No.</span><br/>{buyer_order_no}
+      </td>
+      <td>
+        <span class="bold">Dated</span><br/>{buyer_order_date}
+      </td>
+    </tr>
+  </table>
 
-    <div class="grid-2">
-      <div>
-        <p class="section-title">Billed to</p>
-        <p class="customer-name">{customer_name}</p>
-        <p class="muted">{customer_id}</p>
-        <p class="muted">{customer_address}</p>
-        <p class="muted">{customer_phone}</p>
-        <p class="muted">{customer_email}</p>
-      </div>
-      <div>
-        <p class="section-title">Invoice details</p>
-        <table class="details-table">
-          <tr><td>Invoice date</td><td>{invoice_date}</td></tr>
-          <tr><td>Due date</td><td>{due_date}</td></tr>
-          <tr><td>Payment terms</td><td>Net 14</td></tr>
-          <tr><td>Bill number</td><td>{bill_no}</td></tr>
-        </table>
-      </div>
-    </div>
-
-    <p class="section-title">Line items</p>
-    <table class="items">
-      <thead>
-        <tr>
-          <th class="num">#</th>
-          <th>Description</th>
-          <th class="qty">Qty</th>
-          <th class="money">Unit price</th>
-          <th class="money">Amount</th>
-        </tr>
-      </thead>
-      <tbody>
+  <table class="items">
+    <thead>
+      <tr>
+        <th style="width:4%">Sl</th>
+        <th style="width:34%">Description of Goods</th>
+        <th style="width:10%">HSN/SAC</th>
+        <th style="width:8%">GST Rate</th>
+        <th style="width:8%">Quantity</th>
+        <th style="width:10%">Rate</th>
+        <th style="width:6%">per</th>
+        <th style="width:12%">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
 {items_html}
-      </tbody>
-    </table>
+      <tr>
+        <td colspan="7" class="right bold">Total Taxable Value</td>
+        <td class="right bold">{subtotal}</td>
+      </tr>
+      <tr>
+        <td colspan="7" class="right">OUTPUT CGST @ 9%</td>
+        <td class="right">{cgst_total}</td>
+      </tr>
+      <tr>
+        <td colspan="7" class="right">OUTPUT SGST @ 9%</td>
+        <td class="right">{sgst_total}</td>
+      </tr>
+      <tr>
+        <td colspan="7" class="right">Discount</td>
+        <td class="right">{discount_amount}</td>
+      </tr>
+      <tr>
+        <td colspan="7" class="right">Round Off</td>
+        <td class="right">{round_off}</td>
+      </tr>
+      <tr>
+        <td colspan="4" class="bold">Total</td>
+        <td class="right bold">{total_qty}</td>
+        <td colspan="2"></td>
+        <td class="right bold">{total}</td>
+      </tr>
+    </tbody>
+  </table>
 
-    <div class="totals">
-      <div class="row"><span>Subtotal</span><span>{subtotal}</span></div>
-      <div class="row"><span>Tax ({tax_label})</span><span>{tax_amount}</span></div>
-      <div class="row strong"><span>Total amount</span><span>{total}</span></div>
-      <div class="row"><span>Paid amount</span><span>− {paid}</span></div>
-      <div class="row balance"><span>Remaining balance</span><span>{remaining}</span></div>
-    </div>
+  <table>
+    <tr>
+      <td>
+        <div>Amount Chargeable (in words)</div>
+        <div class="bold">{amount_in_words}</div>
+      </td>
+    </tr>
+  </table>
 
-    <div class="pay-box">
-      <p class="section-title">Payment instructions</p>
-      <table>
-        <tr><td>Bank name</td><td>{bank_name}</td></tr>
-        <tr><td>Account number</td><td>{bank_account}</td></tr>
-        <tr><td>IFSC code</td><td>{bank_ifsc}</td></tr>
-        <tr><td>UPI ID</td><td>{upi_id}</td></tr>
-      </table>
-    </div>
+  <table class="items">
+    <thead>
+      <tr>
+        <th>HSN/SAC</th>
+        <th>Taxable Value</th>
+        <th colspan="2">Central Tax</th>
+        <th colspan="2">State Tax</th>
+        <th>Total Tax Amount</th>
+      </tr>
+      <tr>
+        <th></th><th></th>
+        <th>Rate</th><th>Amount</th>
+        <th>Rate</th><th>Amount</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+{hsn_summary_html}
+      <tr class="bold">
+        <td>Total</td>
+        <td class="right">{subtotal}</td>
+        <td></td>
+        <td class="right">{cgst_total}</td>
+        <td></td>
+        <td class="right">{sgst_total}</td>
+        <td class="right">{tax_amount}</td>
+      </tr>
+    </tbody>
+  </table>
 
-    <p class="note">Please use bill number <strong>{bill_no}</strong> as the payment reference so we can match your payment quickly.</p>
-    <p class="note">Thank you for your business. If you have any questions about this invoice, please contact us at {support_email} or call us on {support_phone}.</p>
+  <table>
+    <tr>
+      <td>
+        <div>Tax Amount (in words): <span class="bold">{tax_in_words}</span></div>
+        <div style="margin-top:10px;" class="small">
+          Declaration: We declare that this invoice shows the actual price of the goods described
+          and that all particulars are true and correct.
+        </div>
+      </td>
+    </tr>
+  </table>
 
-    <div class="footer">
-      <p>© {year} {company_name}. All rights reserved.</p>
-      <p>Generated on {generated_on}</p>
-    </div>
-  </div>
+  <table class="sign">
+    <tr>
+      <td style="width:33%"><div class="small">Prepared by</div></td>
+      <td style="width:33%"><div class="small">Verified by</div></td>
+      <td style="width:34%">
+        <div class="small right">for {company_name}</div>
+        <div style="height:36px;"></div>
+        <div class="right bold">Authorised Signatory</div>
+      </td>
+    </tr>
+  </table>
+  <div class="footer">This is a Computer Generated Invoice</div>
+</div>
 </body>
 </html>

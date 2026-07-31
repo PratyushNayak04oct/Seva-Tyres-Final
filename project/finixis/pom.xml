@@ -90,6 +90,13 @@
             <version>${mail.version}</version>
         </dependency>
 
+        <!-- PDF text extraction for inventory import -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.3</version>
+        </dependency>
+
         <!-- SLF4J for HikariCP logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -123,6 +130,10 @@
                     <options>
                         <option>--add-exports</option>
                         <option>javafx.graphics/com.sun.javafx.application=ALL-UNNAMED</option>
+                        <!-- PDFBox / JDBC drivers may land on classpath (unnamed module) -->
+                        <option>--add-reads</option>
+                        <option>com.sevatyres=ALL-UNNAMED</option>
+                        <option>--enable-native-access=javafx.graphics</option>
                     </options>
                 </configuration>
             </plugin>

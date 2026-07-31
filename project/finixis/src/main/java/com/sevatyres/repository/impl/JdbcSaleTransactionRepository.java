@@ -63,9 +63,9 @@ public class JdbcSaleTransactionRepository implements SaleTransactionRepository 
         String sql = "INSERT INTO Sale_Transaction("
                 + "bill_no,sale_date,particulars,brand,quantity,unit_price,inventory_item_id,"
                 + "phone_pe,account_transfer,card_swipe,bajaj_finance,cash,cheque,credit_amount,"
-                + "subtotal,tax_amount,tax_label,total,"
+                + "subtotal,tax_amount,tax_label,cgst_total,sgst_total,discount_percent,discount_amount,round_off,total,"
                 + "customer_id,customer_name,customer_email,customer_phone,customer_address"
-                + ") VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                + ") VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         try (Connection con = DatabaseConfig.get();
              PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             setParams(ps, tx);
@@ -82,13 +82,13 @@ public class JdbcSaleTransactionRepository implements SaleTransactionRepository 
         String sql = "UPDATE Sale_Transaction SET "
                 + "bill_no=?,sale_date=?,particulars=?,brand=?,quantity=?,unit_price=?,inventory_item_id=?,"
                 + "phone_pe=?,account_transfer=?,card_swipe=?,bajaj_finance=?,cash=?,cheque=?,credit_amount=?,"
-                + "subtotal=?,tax_amount=?,tax_label=?,total=?,"
+                + "subtotal=?,tax_amount=?,tax_label=?,cgst_total=?,sgst_total=?,discount_percent=?,discount_amount=?,round_off=?,total=?,"
                 + "customer_id=?,customer_name=?,customer_email=?,customer_phone=?,customer_address=? "
                 + "WHERE sale_id=?";
         try (Connection con = DatabaseConfig.get();
              PreparedStatement ps = con.prepareStatement(sql)) {
             setParams(ps, tx);
-            ps.setInt(24, tx.getId());
+            ps.setInt(29, tx.getId());
             ps.executeUpdate();
         } catch (SQLException e) { throw new RuntimeException(e); }
     }
@@ -105,7 +105,8 @@ public class JdbcSaleTransactionRepository implements SaleTransactionRepository 
     /** Inserts line items for a multi-item bill. Safe to call with empty list. */
     public void saveItems(int saleId, List<SaleTransactionItem> items) {
         if (items == null || items.isEmpty()) return;
-        String sql = "INSERT INTO Sale_Transaction_Item(sale_id,inventory_id,item_name,quantity,unit_price,line_total) VALUES(?,?,?,?,?,?)";
+        String sql = "INSERT INTO Sale_Transaction_Item(sale_id,inventory_id,item_name,quantity,unit_price,line_total,"
+                + "hsn_sac,item_type,rim_size,rate,cgst_amount,sgst_amount,taxable_amount) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)";
         try (Connection con = DatabaseConfig.get();
              PreparedStatement ps = con.prepareStatement(sql)) {
             for (SaleTransactionItem item : items) {
@@ -116,13 +117,19 @@ public class JdbcSaleTransactionRepository implements SaleTransactionRepository 
                 ps.setInt(4, item.getQuantity());
                 ps.setDouble(5, item.getUnitPrice());
                 ps.setDouble(6, item.getLineTotal());
+                ps.setString(7, item.getHsnSac());
+                ps.setString(8, item.getItemType());
+                ps.setString(9, item.getRimSize());
+                ps.setDouble(10, item.getRate());
+                ps.setDouble(11, item.getCgstAmount());
+                ps.setDouble(12, item.getSgstAmount());
+                ps.setDouble(13, item.getTaxableAmount());
                 ps.addBatch();
             }
             ps.executeBatch();
         } catch (SQLException e) { throw new RuntimeException(e); }
     }
 
-    /** Returns all line items for a given sale (empty if single-item bill). */
     public List<SaleTransactionItem> findItemsBySaleId(int saleId) {
         List<SaleTransactionItem> list = new ArrayList<>();
         String sql = "SELECT * FROM Sale_Transaction_Item WHERE sale_id=? ORDER BY sale_item_id";
@@ -140,6 +147,13 @@ public class JdbcSaleTransactionRepository implements SaleTransactionRepository 
                     it.setQuantity(rs.getInt("quantity"));
                     it.setUnitPrice(rs.getDouble("unit_price"));
                     it.setLineTotal(rs.getDouble("line_total"));
+                    try { it.setHsnSac(rs.getString("hsn_sac")); } catch (SQLException ignored) {}
+                    try { it.setItemType(rs.getString("item_type")); } catch (SQLException ignored) {}
+                    try { it.setRimSize(rs.getString("rim_size")); } catch (SQLException ignored) {}
+                    try { it.setRate(rs.getDouble("rate")); } catch (SQLException ignored) {}
+                    try { it.setCgstAmount(rs.getDouble("cgst_amount")); } catch (SQLException ignored) {}
+                    try { it.setSgstAmount(rs.getDouble("sgst_amount")); } catch (SQLException ignored) {}
+                    try { it.setTaxableAmount(rs.getDouble("taxable_amount")); } catch (SQLException ignored) {}
                     list.add(it);
                 }
             }
@@ -178,13 +192,18 @@ public class JdbcSaleTransactionRepository implements SaleTransactionRepository 
         ps.setDouble(15, tx.getSubtotal());
         ps.setDouble(16, tx.getTaxAmount());
         ps.setString(17, tx.getTaxLabel());
-        ps.setDouble(18, tx.getTotal());
-        if (tx.getCustomerId() != null) ps.setInt(19, tx.getCustomerId());
-        else ps.setNull(19, Types.INTEGER);
-        ps.setString(20, tx.getCustomerName());
-        ps.setString(21, tx.getCustomerEmail());
-        ps.setString(22, tx.getCustomerPhone());
-        ps.setString(23, tx.getCustomerAddress());
+        ps.setDouble(18, tx.getCgstTotal());
+        ps.setDouble(19, tx.getSgstTotal());
+        ps.setDouble(20, tx.getDiscountPercent());
+        ps.setDouble(21, tx.getDiscountAmount());
+        ps.setDouble(22, tx.getRoundOff());
+        ps.setDouble(23, tx.getTotal());
+        if (tx.getCustomerId() != null) ps.setInt(24, tx.getCustomerId());
+        else ps.setNull(24, Types.INTEGER);
+        ps.setString(25, tx.getCustomerName());
+        ps.setString(26, tx.getCustomerEmail());
+        ps.setString(27, tx.getCustomerPhone());
+        ps.setString(28, tx.getCustomerAddress());
     }
 
     private SaleTransaction map(ResultSet rs) throws SQLException {
@@ -211,8 +230,12 @@ public class JdbcSaleTransactionRepository implements SaleTransactionRepository 
         try { tx.setSubtotal(rs.getDouble("subtotal")); } catch (SQLException ignored) {}
         try { tx.setTaxAmount(rs.getDouble("tax_amount")); } catch (SQLException ignored) {}
         try { tx.setTaxLabel(rs.getString("tax_label")); } catch (SQLException ignored) {}
+        try { tx.setCgstTotal(rs.getDouble("cgst_total")); } catch (SQLException ignored) {}
+        try { tx.setSgstTotal(rs.getDouble("sgst_total")); } catch (SQLException ignored) {}
+        try { tx.setDiscountPercent(rs.getDouble("discount_percent")); } catch (SQLException ignored) {}
+        try { tx.setDiscountAmount(rs.getDouble("discount_amount")); } catch (SQLException ignored) {}
+        try { tx.setRoundOff(rs.getDouble("round_off")); } catch (SQLException ignored) {}
         tx.setTotal(rs.getDouble("total"));
-        // Backfill subtotal for older rows
         if (tx.getSubtotal() <= 0 && tx.getTotal() > 0) {
             tx.setSubtotal(Math.max(0, tx.getTotal() - tx.getTaxAmount()));
         }

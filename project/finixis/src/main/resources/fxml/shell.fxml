@@ -40,6 +40,9 @@
             <Button fx:id="navInventory" text="Inventory" styleClass="menu-item" onAction="#goInventory" maxWidth="1.7976931348623157E308" alignment="BASELINE_LEFT">
                 <graphic><FontIcon iconLiteral="fas-boxes"/></graphic>
             </Button>
+            <Button fx:id="navPurchases" text="Purchase Info" styleClass="menu-item" onAction="#goPurchases" maxWidth="1.7976931348623157E308" alignment="BASELINE_LEFT">
+                <graphic><FontIcon iconLiteral="fas-shopping-cart"/></graphic>
+            </Button>
             <Button fx:id="navReports" text="Reports" styleClass="menu-item" onAction="#goReports" maxWidth="1.7976931348623157E308" alignment="BASELINE_LEFT">
                 <graphic><FontIcon iconLiteral="fas-chart-bar"/></graphic>
             </Button>
