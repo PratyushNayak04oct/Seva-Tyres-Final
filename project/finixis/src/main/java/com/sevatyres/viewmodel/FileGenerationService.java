@@ -137,91 +137,232 @@ public final class FileGenerationService {
         }
     }
 
-    /** Dedicated, cleaner Profit/Loss PDF (WinAnsi-safe ASCII only). */
+    /** Dedicated Profit/Loss PDF with fixed column widths and word-wrap (no overlap). */
     private static File writeProfitLossPdf(String title, List<String[]> rows, File outFile,
                                            double netTotal, int txnCount) throws IOException {
-        int pageW = 842, pageH = 595; // landscape A4 points
-        int left = 36, right = pageW - 36;
-        int[] colX = {36, 100, 190, 360, 400, 470, 540, 610, 690, 750};
+        final int pageW = 842, pageH = 595; // landscape A4
+        final int left = 28, right = pageW - 28;
+        final int tableW = right - left;
+        final float fontSize = 7.5f;
+        final int lineH = 10;
+        final int padY = 4;
+
+        // Fixed column widths that sum to tableW — prevents overlap
+        // Date | Bill No | Particulars | Qty | Total | Disc | Rnd | Profit | P/L | Customer
+        final int[] colW = {68, 86, 168, 28, 62, 54, 48, 66, 52, tableW - (68+86+168+28+62+54+48+66+52)};
+        final int[] colX = new int[colW.length];
+        colX[0] = left;
+        for (int i = 1; i < colW.length; i++) colX[i] = colX[i - 1] + colW[i - 1];
+
         String[] headers = {"Date", "Bill No", "Particulars", "Qty", "Total",
-                "Discount", "Rnd Off", "Net Profit", "P/L", "Customer"};
-
-        StringBuilder cs = new StringBuilder();
-        cs.append("BT\n");
-        cs.append("/F1 16 Tf 1 0 0 1 ").append(left).append(" ").append(pageH - 40).append(" Tm (")
-                .append(pdfEsc(asciiSafe(title))).append(") Tj\n");
-        cs.append("/F2 9 Tf 1 0 0 1 ").append(left).append(" ").append(pageH - 58).append(" Tm (")
-                .append(pdfEsc("Net profit = (sales after discount excl. 18% GST) - buying cost + round-off"))
-                .append(") Tj\n");
-        cs.append("/F2 9 Tf 1 0 0 1 ").append(left).append(" ").append(pageH - 72).append(" Tm (")
-                .append(pdfEsc("Transactions: " + txnCount
-                        + "   |   Net P/L: INR " + String.format("%,.2f", netTotal)
-                        + "   |   Generated: " + LocalDateTime.now().format(FULL)))
-                .append(") Tj\n");
-        cs.append("ET\n");
-
-        // Header bar
-        int y = pageH - 95;
-        cs.append("q 0.15 0.25 0.45 rg ").append(left).append(" ").append(y - 4)
-                .append(" ").append(right - left).append(" 18 re f Q\n");
-        cs.append("BT /F1 8 Tf 1 1 1 rg\n");
-        for (int i = 0; i < headers.length; i++) {
-            cs.append("1 0 0 1 ").append(colX[i]).append(" ").append(y).append(" Tm (")
-                    .append(pdfEsc(headers[i])).append(") Tj\n");
+                "Disc", "Rnd", "Profit", "P/L", "Customer"};
+        // Max chars per column (~ Helvetica avg width 0.5 * fontSize)
+        int[] maxChars = new int[colW.length];
+        for (int i = 0; i < colW.length; i++) {
+            maxChars[i] = Math.max(3, (int) ((colW[i] - 6) / (fontSize * 0.50)));
         }
-        cs.append("ET\n");
 
-        y -= 22;
-        boolean alt = false;
+        List<String[]> headerLines = new ArrayList<>();
+        for (int i = 0; i < headers.length; i++) {
+            headerLines.add(wrapWords(headers[i], maxChars[i]));
+        }
+        int headerLineCount = 1;
+        for (String[] hl : headerLines) headerLineCount = Math.max(headerLineCount, hl.length);
+        int headerBlockH = headerLineCount * lineH + padY * 2;
+
+        // Pre-wrap all data rows
+        List<List<String[]>> wrappedRows = new ArrayList<>();
+        List<Integer> rowHeights = new ArrayList<>();
         for (String[] row : rows) {
-            if (y < 50) {
-                // simple single-page overflow note
-                cs.append("BT /F2 8 Tf 0 0 0 rg 1 0 0 1 ").append(left).append(" 36 Tm (")
-                        .append(pdfEsc("... continued data truncated for page size; export Excel for full list."))
-                        .append(") Tj ET\n");
-                break;
+            List<String[]> cells = new ArrayList<>();
+            int maxLines = 1;
+            for (int i = 0; i < headers.length; i++) {
+                String cell = asciiSafe(i < row.length && row[i] != null ? row[i] : "");
+                String[] lines = wrapWords(cell, maxChars[i]);
+                cells.add(lines);
+                maxLines = Math.max(maxLines, lines.length);
             }
-            boolean isTotal = row.length > 2 && "TOTAL".equalsIgnoreCase(row[2]);
-            if (alt && !isTotal) {
-                cs.append("q 0.95 0.96 0.98 rg ").append(left).append(" ").append(y - 3)
-                        .append(" ").append(right - left).append(" 16 re f Q\n");
+            wrappedRows.add(cells);
+            rowHeights.add(maxLines * lineH + padY * 2);
+        }
+
+        List<byte[]> pageContents = new ArrayList<>();
+        int rowIdx = 0;
+        int pageNo = 0;
+        while (rowIdx < wrappedRows.size() || pageNo == 0) {
+            pageNo++;
+            StringBuilder cs = new StringBuilder();
+            // Title / meta only on first page
+            int yTop = pageH - 36;
+            if (pageNo == 1) {
+                cs.append("BT\n");
+                cs.append("/F1 13 Tf 1 0 0 1 ").append(left).append(" ").append(yTop).append(" Tm (")
+                        .append(pdfEsc(asciiSafe(title))).append(") Tj\n");
+                cs.append("/F2 8 Tf 1 0 0 1 ").append(left).append(" ").append(yTop - 16).append(" Tm (")
+                        .append(pdfEsc("Net profit = (sales after discount excl. 18% GST) - buying cost + round-off"))
+                        .append(") Tj\n");
+                cs.append("/F2 8 Tf 1 0 0 1 ").append(left).append(" ").append(yTop - 28).append(" Tm (")
+                        .append(pdfEsc("Transactions: " + txnCount
+                                + "  |  Net P/L: INR " + String.format("%,.2f", netTotal)
+                                + "  |  Generated: " + LocalDateTime.now().format(FULL)))
+                        .append(") Tj\n");
+                cs.append("ET\n");
+                yTop = pageH - 78;
+            } else {
+                cs.append("BT /F1 10 Tf 1 0 0 1 ").append(left).append(" ").append(yTop).append(" Tm (")
+                        .append(pdfEsc(asciiSafe(title) + " (cont.)")).append(") Tj ET\n");
+                yTop = pageH - 54;
             }
-            if (isTotal) {
-                cs.append("q 0.90 0.93 0.88 rg ").append(left).append(" ").append(y - 3)
-                        .append(" ").append(right - left).append(" 16 re f Q\n");
-            }
-            cs.append("BT /F2 8 Tf 0 0 0 rg\n");
-            for (int i = 0; i < headers.length && i < row.length; i++) {
-                String cell = asciiSafe(row[i] != null ? row[i] : "");
-                int maxLen = i == 2 ? 28 : (i == 9 ? 14 : 12);
-                cs.append("1 0 0 1 ").append(colX[i]).append(" ").append(y).append(" Tm (")
-                        .append(pdfEsc(truncate(cell, maxLen))).append(") Tj\n");
+
+            // Header bar
+            int headerBottom = yTop - headerBlockH;
+            cs.append("q 0.15 0.25 0.45 rg ").append(left).append(" ").append(headerBottom)
+                    .append(" ").append(tableW).append(" ").append(headerBlockH).append(" re f Q\n");
+            cs.append("BT /F1 ").append(fontSize).append(" Tf 1 1 1 rg\n");
+            for (int i = 0; i < headers.length; i++) {
+                String[] lines = headerLines.get(i);
+                int textY = yTop - padY - lineH + 2;
+                for (String ln : lines) {
+                    cs.append("1 0 0 1 ").append(colX[i] + 3).append(" ").append(textY).append(" Tm (")
+                            .append(pdfEsc(ln)).append(") Tj\n");
+                    textY -= lineH;
+                }
             }
             cs.append("ET\n");
-            y -= 16;
-            alt = !alt;
+
+            int y = headerBottom;
+            boolean alt = false;
+            int rowsOnPage = 0;
+            while (rowIdx < wrappedRows.size()) {
+                int rh = rowHeights.get(rowIdx);
+                // Leave footer room; always place at least one data row per page
+                if (rowsOnPage > 0 && y - rh < 40) break;
+
+                List<String[]> cells = wrappedRows.get(rowIdx);
+                boolean isTotal = cells.size() > 2 && cells.get(2).length > 0
+                        && "TOTAL".equalsIgnoreCase(cells.get(2)[0]);
+
+                // If a single row is taller than remaining space, clip to available height
+                int available = y - 40;
+                if (available < lineH + padY * 2) available = lineH + padY * 2;
+                if (rh > available) rh = available;
+
+                int rowBottom = y - rh;
+                if (isTotal) {
+                    cs.append("q 0.90 0.93 0.88 rg ").append(left).append(" ").append(rowBottom)
+                            .append(" ").append(tableW).append(" ").append(rh).append(" re f Q\n");
+                } else if (alt) {
+                    cs.append("q 0.95 0.96 0.98 rg ").append(left).append(" ").append(rowBottom)
+                            .append(" ").append(tableW).append(" ").append(rh).append(" re f Q\n");
+                }
+
+                cs.append("q 0.85 0.87 0.90 RG 0.4 w ")
+                        .append(left).append(" ").append(y).append(" m ")
+                        .append(right).append(" ").append(y).append(" l S Q\n");
+
+                cs.append("BT /F2 ").append(fontSize).append(" Tf 0 0 0 rg\n");
+                for (int i = 0; i < cells.size(); i++) {
+                    String[] lines = cells.get(i);
+                    int textY = y - padY - lineH + 2;
+                    int maxDraw = Math.max(1, (rh - padY * 2) / lineH);
+                    for (int li = 0; li < lines.length && li < maxDraw; li++) {
+                        cs.append("1 0 0 1 ").append(colX[i] + 3).append(" ").append(textY).append(" Tm (")
+                                .append(pdfEsc(lines[li])).append(") Tj\n");
+                        textY -= lineH;
+                    }
+                }
+                cs.append("ET\n");
+
+                y = rowBottom;
+                alt = !alt;
+                rowIdx++;
+                rowsOnPage++;
+            }
+
+            cs.append("q 0.15 0.25 0.45 rg ").append(left).append(" 28 ")
+                    .append(tableW).append(" 1.2 re f Q\n");
+            cs.append("BT /F2 7 Tf 1 0 0 1 ").append(left).append(" 16 Tm (")
+                    .append(pdfEsc("Seva Tyres - Profit / Loss Report  |  Page " + pageNo))
+                    .append(") Tj ET\n");
+
+            pageContents.add(cs.toString().getBytes(StandardCharsets.ISO_8859_1));
+            if (rowIdx >= wrappedRows.size()) break;
         }
 
-        cs.append("q 0.15 0.25 0.45 rg ").append(left).append(" 28 ")
-                .append(right - left).append(" 1.2 re f Q\n");
-        cs.append("BT /F2 8 Tf 1 0 0 1 ").append(left).append(" 16 Tm (")
-                .append(pdfEsc("Seva Tyres - Profit / Loss Report (computer generated)"))
-                .append(") Tj ET\n");
-
-        writeLandscapePdf(cs.toString().getBytes(StandardCharsets.ISO_8859_1), outFile, pageW, pageH);
+        writeMultiPageLandscapePdf(pageContents, outFile, pageW, pageH);
         return outFile;
     }
 
-    private static void writeLandscapePdf(byte[] csBytes, File outFile, int pageW, int pageH) throws IOException {
+    /** Word-wrap text to fit maxChars per line; breaks long tokens mid-word if needed. */
+    private static String[] wrapWords(String text, int maxChars) {
+        if (text == null || text.isBlank()) return new String[]{""};
+        if (maxChars < 3) maxChars = 3;
+        List<String> lines = new ArrayList<>();
+        String[] words = text.trim().split("\\s+");
+        StringBuilder cur = new StringBuilder();
+        for (String word : words) {
+            // Hard-split oversized tokens so they never spill into next column
+            while (word.length() > maxChars) {
+                if (!cur.isEmpty()) {
+                    lines.add(cur.toString());
+                    cur.setLength(0);
+                }
+                lines.add(word.substring(0, maxChars));
+                word = word.substring(maxChars);
+            }
+            if (cur.isEmpty()) {
+                cur.append(word);
+            } else if (cur.length() + 1 + word.length() <= maxChars) {
+                cur.append(' ').append(word);
+            } else {
+                lines.add(cur.toString());
+                cur.setLength(0);
+                cur.append(word);
+            }
+        }
+        if (!cur.isEmpty()) lines.add(cur.toString());
+        if (lines.isEmpty()) lines.add("");
+        // Cap extreme wraps so one cell cannot dominate the page
+        if (lines.size() > 4) {
+            List<String> capped = new ArrayList<>(lines.subList(0, 3));
+            String last = lines.get(3);
+            if (last.length() > maxChars - 1) last = last.substring(0, maxChars - 1);
+            capped.add(last + "~");
+            return capped.toArray(new String[0]);
+        }
+        return lines.toArray(new String[0]);
+    }
+
+    private static void writeMultiPageLandscapePdf(List<byte[]> pageContents, File outFile,
+                                                   int pageW, int pageH) throws IOException {
+        int pageCount = pageContents.size();
         List<byte[]> objs = new ArrayList<>();
+        // 1 Catalog, 2 Pages, then per page: Page + Contents; then 2 fonts
+        // Object numbers: 1=Catalog, 2=Pages, 3..(2+2*pageCount)=pages/contents, then fonts
+        StringBuilder kids = new StringBuilder("[");
+        for (int i = 0; i < pageCount; i++) {
+            int pageObj = 3 + i * 2;
+            kids.append(pageObj).append(" 0 R ");
+        }
+        kids.append("]");
+
         objs.add(pdf("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"));
-        objs.add(pdf("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"));
-        objs.add(pdf("3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "
-                + pageW + " " + pageH + "] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>\nendobj\n"));
-        objs.add(pdfStream(csBytes, 4));
-        objs.add(pdf("5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold"
+        objs.add(pdf("2 0 obj\n<< /Type /Pages /Kids " + kids + " /Count " + pageCount + " >>\nendobj\n"));
+
+        int font1 = 3 + pageCount * 2;
+        int font2 = font1 + 1;
+        for (int i = 0; i < pageCount; i++) {
+            int pageObj = 3 + i * 2;
+            int contentObj = pageObj + 1;
+            objs.add(pdf(pageObj + " 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "
+                    + pageW + " " + pageH + "] /Contents " + contentObj
+                    + " 0 R /Resources << /Font << /F1 " + font1 + " 0 R /F2 " + font2
+                    + " 0 R >> >> >>\nendobj\n"));
+            objs.add(pdfStream(pageContents.get(i), contentObj));
+        }
+        objs.add(pdf(font1 + " 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold"
                 + " /Encoding /WinAnsiEncoding >>\nendobj\n"));
-        objs.add(pdf("6 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica"
+        objs.add(pdf(font2 + " 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica"
                 + " /Encoding /WinAnsiEncoding >>\nendobj\n"));
         writePdfObjects(objs, outFile);
     }
