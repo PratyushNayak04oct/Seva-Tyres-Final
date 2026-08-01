@@ -7,6 +7,7 @@ import com.sevatyres.model.Invoice;
 import com.sevatyres.model.SaleTransaction;
 import com.sevatyres.model.SaleTransactionItem;
 import com.sevatyres.model.Transaction;
+import com.sevatyres.repository.impl.JdbcInventoryRepository;
 import com.sevatyres.repository.impl.JdbcSaleTransactionRepository;
 import com.sevatyres.service.AppServices;
 import com.sevatyres.service.CompanyService;
@@ -83,52 +84,189 @@ public final class FileGenerationService {
     /** Profit/Loss report — one row per transaction with net profit. */
     public static GeneratedFile generateProfitLossReport(List<SaleTransaction> txns, String format) throws IOException {
         String ts = LocalDateTime.now().format(TS);
-        String name = "Seva Tyres Profit Loss Report – " + LocalDateTime.now().format(DISP);
+        String name = "Seva Tyres Profit Loss Report - " + LocalDateTime.now().format(DISP);
         File dir = outputDir();
 
         var profitService = new com.sevatyres.service.ProfitService();
         var saleRepo = new JdbcSaleTransactionRepository();
 
         String[] headers = {"Date", "Bill No", "Particulars", "Qty", "Bill Total",
-                "Net Profit", "P/L", "Customer"};
+                "Discount", "Round Off", "Net Profit", "P/L", "Customer"};
         List<String[]> rows = new ArrayList<>();
         double profitSum = 0;
+        double totalSales = 0;
+        double totalDisc = 0;
         for (SaleTransaction t : txns) {
-            double profit = t.getNetProfit();
-            // Recompute when missing (older bills) so the report stays accurate
             List<SaleTransactionItem> items = saleRepo.findItemsBySaleId(t.getId());
-            if (Math.abs(profit) < 0.0001) {
-                profit = profitService.calculateNetProfit(t, items);
-            }
+            // Always recompute so discount/round-off are applied consistently
+            double profit = profitService.calculateNetProfit(t, items);
             profitSum += profit;
+            totalSales += t.getTotal();
+            totalDisc += Math.max(0, t.getDiscountAmount());
             String pl = profit > 0.009 ? "Profit" : (profit < -0.009 ? "Loss" : "Break-even");
+            String particulars = asciiSafe(t.getParticulars() != null ? t.getParticulars() : "");
             rows.add(new String[]{
-                    t.getSaleDate() != null ? t.getSaleDate().format(DateTimeFormatter.ofPattern("MMM d, yyyy")) : "",
-                    t.getBillNo() != null ? t.getBillNo() : "",
-                    t.getParticulars() != null ? t.getParticulars() : "",
+                    t.getSaleDate() != null ? t.getSaleDate().format(DateTimeFormatter.ofPattern("dd-MMM-yyyy")) : "",
+                    asciiSafe(t.getBillNo() != null ? t.getBillNo() : ""),
+                    particulars,
                     String.valueOf(t.getQuantity()),
                     String.format("%.2f", t.getTotal()),
+                    String.format("%.2f", t.getDiscountAmount()),
+                    String.format("%.2f", t.getRoundOff()),
                     String.format("%.2f", profit),
                     pl,
-                    t.getCustomerName() != null ? t.getCustomerName() : ""
+                    asciiSafe(t.getCustomerName() != null ? t.getCustomerName() : "")
             });
         }
-        rows.add(new String[]{"", "", "TOTAL", "", "",
+        rows.add(new String[]{"", "", "TOTAL", "",
+                String.format("%.2f", totalSales),
+                String.format("%.2f", totalDisc),
+                "",
                 String.format("%.2f", profitSum),
                 profitSum >= 0 ? "Net Profit" : "Net Loss", ""});
 
         LocalDateTime now = LocalDateTime.now();
-        String subtitle = "Generated: " + now.format(FULL)
-                + "  |  Net profit = (sell excl. 18% GST − buy) × qty − discount excl. tax + round-off";
         if ("PDF".equalsIgnoreCase(format)) {
-            File pdf = writePdf(name, subtitle, headers, rows,
-                    new File(dir, "ProfitLoss_" + ts + ".pdf"));
+            File pdf = writeProfitLossPdf(name, rows,
+                    new File(dir, "ProfitLoss_" + ts + ".pdf"), profitSum, txns.size());
             return new GeneratedFile(++seq, name, "Report", "PDF", now, pdf);
         } else {
             File xlsx = writeExcel("Profit Loss", headers, rows,
                     new File(dir, "ProfitLoss_" + ts + ".xlsx"));
             return new GeneratedFile(++seq, name, "Report", "Excel", now, xlsx);
         }
+    }
+
+    /** Dedicated, cleaner Profit/Loss PDF (WinAnsi-safe ASCII only). */
+    private static File writeProfitLossPdf(String title, List<String[]> rows, File outFile,
+                                           double netTotal, int txnCount) throws IOException {
+        int pageW = 842, pageH = 595; // landscape A4 points
+        int left = 36, right = pageW - 36;
+        int[] colX = {36, 100, 190, 360, 400, 470, 540, 610, 690, 750};
+        String[] headers = {"Date", "Bill No", "Particulars", "Qty", "Total",
+                "Discount", "Rnd Off", "Net Profit", "P/L", "Customer"};
+
+        StringBuilder cs = new StringBuilder();
+        cs.append("BT\n");
+        cs.append("/F1 16 Tf 1 0 0 1 ").append(left).append(" ").append(pageH - 40).append(" Tm (")
+                .append(pdfEsc(asciiSafe(title))).append(") Tj\n");
+        cs.append("/F2 9 Tf 1 0 0 1 ").append(left).append(" ").append(pageH - 58).append(" Tm (")
+                .append(pdfEsc("Net profit = (sales after discount excl. 18% GST) - buying cost + round-off"))
+                .append(") Tj\n");
+        cs.append("/F2 9 Tf 1 0 0 1 ").append(left).append(" ").append(pageH - 72).append(" Tm (")
+                .append(pdfEsc("Transactions: " + txnCount
+                        + "   |   Net P/L: INR " + String.format("%,.2f", netTotal)
+                        + "   |   Generated: " + LocalDateTime.now().format(FULL)))
+                .append(") Tj\n");
+        cs.append("ET\n");
+
+        // Header bar
+        int y = pageH - 95;
+        cs.append("q 0.15 0.25 0.45 rg ").append(left).append(" ").append(y - 4)
+                .append(" ").append(right - left).append(" 18 re f Q\n");
+        cs.append("BT /F1 8 Tf 1 1 1 rg\n");
+        for (int i = 0; i < headers.length; i++) {
+            cs.append("1 0 0 1 ").append(colX[i]).append(" ").append(y).append(" Tm (")
+                    .append(pdfEsc(headers[i])).append(") Tj\n");
+        }
+        cs.append("ET\n");
+
+        y -= 22;
+        boolean alt = false;
+        for (String[] row : rows) {
+            if (y < 50) {
+                // simple single-page overflow note
+                cs.append("BT /F2 8 Tf 0 0 0 rg 1 0 0 1 ").append(left).append(" 36 Tm (")
+                        .append(pdfEsc("... continued data truncated for page size; export Excel for full list."))
+                        .append(") Tj ET\n");
+                break;
+            }
+            boolean isTotal = row.length > 2 && "TOTAL".equalsIgnoreCase(row[2]);
+            if (alt && !isTotal) {
+                cs.append("q 0.95 0.96 0.98 rg ").append(left).append(" ").append(y - 3)
+                        .append(" ").append(right - left).append(" 16 re f Q\n");
+            }
+            if (isTotal) {
+                cs.append("q 0.90 0.93 0.88 rg ").append(left).append(" ").append(y - 3)
+                        .append(" ").append(right - left).append(" 16 re f Q\n");
+            }
+            cs.append("BT /F2 8 Tf 0 0 0 rg\n");
+            for (int i = 0; i < headers.length && i < row.length; i++) {
+                String cell = asciiSafe(row[i] != null ? row[i] : "");
+                int maxLen = i == 2 ? 28 : (i == 9 ? 14 : 12);
+                cs.append("1 0 0 1 ").append(colX[i]).append(" ").append(y).append(" Tm (")
+                        .append(pdfEsc(truncate(cell, maxLen))).append(") Tj\n");
+            }
+            cs.append("ET\n");
+            y -= 16;
+            alt = !alt;
+        }
+
+        cs.append("q 0.15 0.25 0.45 rg ").append(left).append(" 28 ")
+                .append(right - left).append(" 1.2 re f Q\n");
+        cs.append("BT /F2 8 Tf 1 0 0 1 ").append(left).append(" 16 Tm (")
+                .append(pdfEsc("Seva Tyres - Profit / Loss Report (computer generated)"))
+                .append(") Tj ET\n");
+
+        writeLandscapePdf(cs.toString().getBytes(StandardCharsets.ISO_8859_1), outFile, pageW, pageH);
+        return outFile;
+    }
+
+    private static void writeLandscapePdf(byte[] csBytes, File outFile, int pageW, int pageH) throws IOException {
+        List<byte[]> objs = new ArrayList<>();
+        objs.add(pdf("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"));
+        objs.add(pdf("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"));
+        objs.add(pdf("3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "
+                + pageW + " " + pageH + "] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>\nendobj\n"));
+        objs.add(pdfStream(csBytes, 4));
+        objs.add(pdf("5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold"
+                + " /Encoding /WinAnsiEncoding >>\nendobj\n"));
+        objs.add(pdf("6 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica"
+                + " /Encoding /WinAnsiEncoding >>\nendobj\n"));
+        writePdfObjects(objs, outFile);
+    }
+
+    private static void writePdfObjects(List<byte[]> objs, File outFile) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.write("%PDF-1.4\n".getBytes(StandardCharsets.ISO_8859_1));
+        int[] xrefOffsets = new int[objs.size()];
+        for (int i = 0; i < objs.size(); i++) {
+            xrefOffsets[i] = out.size();
+            out.write(objs.get(i));
+        }
+        int xrefStart = out.size();
+        StringBuilder xref = new StringBuilder("xref\n0 ").append(objs.size() + 1).append("\n");
+        xref.append("0000000000 65535 f \n");
+        for (int off : xrefOffsets) xref.append(String.format("%010d 00000 n \n", off));
+        out.write(xref.toString().getBytes(StandardCharsets.ISO_8859_1));
+        String trailer = "trailer\n<< /Size " + (objs.size() + 1) + " /Root 1 0 R >>\n"
+                + "startxref\n" + xrefStart + "\n%%EOF\n";
+        out.write(trailer.getBytes(StandardCharsets.ISO_8859_1));
+        Files.write(outFile.toPath(), out.toByteArray());
+    }
+
+    /** Strip/replace chars that Helvetica/WinAnsi cannot encode (avoids '?' in PDF). */
+    private static String asciiSafe(String s) {
+        if (s == null) return "";
+        StringBuilder sb = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '\u20B9', '\u00A3' -> sb.append("INR ");
+                case '\u2013', '\u2014', '\u2212' -> sb.append('-');
+                case '\u2018', '\u2019', '\u2032' -> sb.append('\'');
+                case '\u201C', '\u201D' -> sb.append('"');
+                case '\u2022' -> sb.append('*');
+                case '\u00A0' -> sb.append(' ');
+                case '\u00D7' -> sb.append('x');
+                default -> {
+                    if (c <= 0x7F) sb.append(c);
+                    else if (c <= 0xFF) sb.append(c); // WinAnsi Latin-1
+                    else sb.append(' ');
+                }
+            }
+        }
+        return sb.toString().replaceAll("\\s+", " ").trim();
     }
 
     public static List<GeneratedFile> generateReport(List<Transaction> transactions) throws IOException {
@@ -376,8 +514,39 @@ public final class FileGenerationService {
             acc[2] += split.sgst();
 
             String desc = htmlEsc(it.getItemName() != null ? it.getItemName() : "");
-            if (it.getRimSize() != null && !it.getRimSize().isBlank()) {
-                desc += "<br/><span class=\"small muted\">Rim: " + htmlEsc(it.getRimSize()) + "</span>";
+            String rim = it.getRimSize();
+            String size = null, pattern = null, kind = null, code = null;
+            if (it.getInventoryId() != null) {
+                Optional<InventoryItem> inv = new JdbcInventoryRepository().findById(it.getInventoryId());
+                if (inv.isPresent()) {
+                    InventoryItem ii = inv.get();
+                    if (rim == null || rim.isBlank()) rim = ii.getRimSize();
+                    size = ii.getTyreSize();
+                    pattern = ii.getPattern();
+                    kind = ii.getTyreKind();
+                    code = ii.getProductCode();
+                }
+            }
+            StringBuilder meta = new StringBuilder();
+            if (rim != null && !rim.isBlank()) meta.append("Rim: ").append(htmlEsc(rim));
+            if (size != null && !size.isBlank()) {
+                if (!meta.isEmpty()) meta.append(" · ");
+                meta.append("Size: ").append(htmlEsc(size));
+            }
+            if (pattern != null && !pattern.isBlank()) {
+                if (!meta.isEmpty()) meta.append(" · ");
+                meta.append("Pattern: ").append(htmlEsc(pattern));
+            }
+            if (kind != null && !kind.isBlank()) {
+                if (!meta.isEmpty()) meta.append(" · ");
+                meta.append("Type: ").append(htmlEsc(kind));
+            }
+            if (code != null && !code.isBlank()) {
+                if (!meta.isEmpty()) meta.append(" · ");
+                meta.append("Code: ").append(htmlEsc(code));
+            }
+            if (!meta.isEmpty()) {
+                desc += "<br/><span class=\"small muted\">" + meta + "</span>";
             }
             itemsHtml.append("      <tr>\n")
                     .append("        <td class=\"center\">").append(n++).append("</td>\n")
@@ -722,11 +891,11 @@ public final class FileGenerationService {
     }
 
     private static String pdfEsc(String s) {
-        if (s == null) return "";
-        StringBuilder sb = new StringBuilder();
-        for (char c : s.toCharArray()) {
+        String safe = asciiSafe(s);
+        StringBuilder sb = new StringBuilder(safe.length() + 8);
+        for (char c : safe.toCharArray()) {
             if (c == '(' || c == ')' || c == '\\') sb.append('\\');
-            sb.append(c < 256 ? c : '?');
+            sb.append(c);
         }
         return sb.toString();
     }

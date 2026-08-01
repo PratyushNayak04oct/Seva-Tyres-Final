@@ -13,34 +13,18 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Net profit for a sale:
- * <ol>
- *   <li>Unit profit (tax-inclusive) = inventory sell price − purchase buying price</li>
- *   <li>Line profit = unit profit × qty</li>
- *   <li>Remove 18% tax embedded in sell price → net = sell/1.18 − buy (× qty)</li>
- *   <li>Subtract excl-tax impact of discount; add bill round-off</li>
- * </ol>
+ * Net profit for a sale, always after discount and round-off:
+ * <pre>
+ *   net sell (excl. tax) = (inclusive sales − discount) ÷ 1.18
+ *   buy cost             = Σ (buying price × qty)
+ *   net profit           = net sell − buy cost + round-off
+ * </pre>
  */
 public class ProfitService {
 
     private final JdbcPurchaseInfoRepository purchases = new JdbcPurchaseInfoRepository();
 
     public double calculateNetProfit(SaleTransaction tx, List<SaleTransactionItem> items) {
-        if (items == null || items.isEmpty()) {
-            // Legacy single-item bill
-            if (tx.getInventoryItemId() != null && tx.getQuantity() > 0 && tx.getUnitPrice() > 0) {
-                double buy = resolveBuyPrice(tx.getInventoryItemId(), tx.getParticulars());
-                double sell = tx.getUnitPrice();
-                int qty = tx.getQuantity();
-                double grossIncl = GstUtil.round2((sell - buy) * qty);
-                double taxOnSell = GstUtil.round2(sell * qty - GstUtil.taxableFromInclusive(sell * qty));
-                double net = GstUtil.round2(grossIncl - taxOnSell);
-                net = applyDiscountAndRoundOff(net, tx.getDiscountAmount(), tx.getRoundOff());
-                return net;
-            }
-            return 0;
-        }
-
         Map<Integer, Double> buyByInv = new HashMap<>();
         Map<String, Double> buyByName = new HashMap<>();
         for (PurchaseInfo p : purchases.findAll()) {
@@ -50,46 +34,57 @@ public class ProfitService {
             }
         }
 
-        double net = 0;
-        for (SaleTransactionItem it : items) {
-            double sell = it.getUnitPrice(); // tax-inclusive unit price
-            int qty = Math.max(0, it.getQuantity());
-            double buy = 0;
-            if (it.getInventoryId() != null && buyByInv.containsKey(it.getInventoryId())) {
-                buy = buyByInv.get(it.getInventoryId());
-            } else if (it.getItemName() != null) {
-                buy = buyByName.getOrDefault(it.getItemName().trim().toLowerCase(Locale.ROOT), 0.0);
+        double inclusiveSales = 0;
+        double buyCost = 0;
+
+        if (items != null && !items.isEmpty()) {
+            for (SaleTransactionItem it : items) {
+                int qty = Math.max(0, it.getQuantity());
+                double sellIncl = it.getLineTotal() > 0
+                        ? it.getLineTotal()
+                        : GstUtil.splitLine(it.getUnitPrice(), qty).inclusiveTotal();
+                inclusiveSales += sellIncl;
+                buyCost += resolveBuy(it.getInventoryId(), it.getItemName(), buyByInv, buyByName) * qty;
             }
-
-            // Prefer stored taxable (matches invoice); else Base = Inclusive ÷ 1.18
-            GstUtil.LineGst split = GstUtil.splitLine(sell, qty);
-            double sellBase = it.getTaxableAmount() > 0 ? it.getTaxableAmount() : split.taxable();
-            double sellInclusive = it.getLineTotal() > 0 ? it.getLineTotal() : split.inclusiveTotal();
-            // Step 2–3: (sell − buy)×qty minus 18% tax in sell = sellBase − buy×qty
-            double grossIncl = GstUtil.round2(sellInclusive - buy * qty);
-            double taxOnSell = GstUtil.round2(sellInclusive - sellBase);
-            net += GstUtil.round2(grossIncl - taxOnSell);
+        } else if (tx.getQuantity() > 0 && tx.getUnitPrice() > 0) {
+            inclusiveSales = GstUtil.round2(tx.getUnitPrice() * tx.getQuantity());
+            buyCost = resolveBuy(tx.getInventoryItemId(), tx.getParticulars(), buyByInv, buyByName)
+                    * tx.getQuantity();
+        } else {
+            return 0;
         }
-        net = GstUtil.round2(net);
-        net = applyDiscountAndRoundOff(net, tx.getDiscountAmount(), tx.getRoundOff());
-        return net;
+
+        inclusiveSales = GstUtil.round2(inclusiveSales);
+        buyCost = GstUtil.round2(buyCost);
+
+        // Discount is tax-inclusive — always reduce revenue before stripping GST
+        double discountIncl = Math.max(0, tx.getDiscountAmount());
+        if (discountIncl <= 0.009 && tx.getDiscountPercent() > 0) {
+            discountIncl = GstUtil.round2(inclusiveSales * tx.getDiscountPercent() / 100.0);
+        }
+        discountIncl = Math.min(discountIncl, inclusiveSales);
+
+        double netInclusive = GstUtil.round2(inclusiveSales - discountIncl);
+        double netSellExclTax = GstUtil.taxableFromInclusive(netInclusive);
+        double roundOff = tx.getRoundOff();
+
+        return GstUtil.round2(netSellExclTax - buyCost + roundOff);
     }
 
-    private double applyDiscountAndRoundOff(double netProfit, double discountIncl, double roundOff) {
-        // Discount is on tax-inclusive total → remove excl-tax portion from profit
-        double discExcl = discountIncl > 0 ? GstUtil.taxableFromInclusive(discountIncl) : 0;
-        // Round-off is cash adjustment on the bill (nearest rupee) — include in net profit
-        return GstUtil.round2(netProfit - discExcl + roundOff);
-    }
-
-    private double resolveBuyPrice(Integer inventoryId, String name) {
+    private double resolveBuy(Integer inventoryId, String name,
+                              Map<Integer, Double> buyByInv, Map<String, Double> buyByName) {
+        if (inventoryId != null && buyByInv.containsKey(inventoryId)) {
+            return buyByInv.get(inventoryId);
+        }
+        if (name != null && !name.isBlank()) {
+            Double v = buyByName.get(name.trim().toLowerCase(Locale.ROOT));
+            if (v != null) return v;
+            Optional<PurchaseInfo> byName = purchases.findByItemName(name);
+            if (byName.isPresent()) return byName.get().getBuyingPrice();
+        }
         if (inventoryId != null) {
             Optional<PurchaseInfo> byInv = purchases.findByInventoryId(inventoryId);
             if (byInv.isPresent()) return byInv.get().getBuyingPrice();
-        }
-        if (name != null && !name.isBlank()) {
-            Optional<PurchaseInfo> byName = purchases.findByItemName(name);
-            if (byName.isPresent()) return byName.get().getBuyingPrice();
         }
         return 0;
     }

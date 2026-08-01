@@ -13,30 +13,38 @@ public class JdbcInventoryRepository implements InventoryRepository {
 
     private static final int REORDER_LEVEL = 10;
     private static final String SELECT_ALL =
-            "SELECT item_id,item_name,brand,available_quantity,unit_price,barcode,hsn_sac,item_type,rim_size FROM Inventory";
+            "SELECT item_id,item_name,brand,available_quantity,unit_price,barcode,hsn_sac,item_type,"
+                    + "rim_size,tyre_size,pattern,tyre_kind,product_code,mrp,purchase_id FROM Inventory";
 
     @Override
     public List<InventoryItem> findAll() {
-        List<InventoryItem> list = new ArrayList<>();
         try (Connection con = DatabaseConfig.get();
              Statement st = con.createStatement();
              ResultSet rs = st.executeQuery(SELECT_ALL + " ORDER BY item_name")) {
+            List<InventoryItem> list = new ArrayList<>();
             while (rs.next()) list.add(map(rs));
+            return list;
         } catch (SQLException e) {
-            // Fallback without new columns (pre-migration)
             return findAllLegacy();
         }
-        return list;
     }
 
     private List<InventoryItem> findAllLegacy() {
         List<InventoryItem> list = new ArrayList<>();
-        String sql = "SELECT item_id,item_name,brand,available_quantity,unit_price,barcode FROM Inventory ORDER BY item_name";
+        String sql = "SELECT item_id,item_name,brand,available_quantity,unit_price,barcode,hsn_sac,item_type,rim_size "
+                + "FROM Inventory ORDER BY item_name";
         try (Connection con = DatabaseConfig.get();
              Statement st = con.createStatement();
              ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) list.add(mapLegacy(rs));
-        } catch (SQLException e) { throw new RuntimeException(e); }
+            while (rs.next()) list.add(map(rs));
+        } catch (SQLException e) {
+            String sql2 = "SELECT item_id,item_name,brand,available_quantity,unit_price,barcode FROM Inventory ORDER BY item_name";
+            try (Connection con = DatabaseConfig.get();
+                 Statement st = con.createStatement();
+                 ResultSet rs = st.executeQuery(sql2)) {
+                while (rs.next()) list.add(mapLegacy(rs));
+            } catch (SQLException e2) { throw new RuntimeException(e2); }
+        }
         return list;
     }
 
@@ -49,14 +57,7 @@ public class JdbcInventoryRepository implements InventoryRepository {
                 return rs.next() ? Optional.of(map(rs)) : Optional.empty();
             }
         } catch (SQLException e) {
-            try (Connection con = DatabaseConfig.get();
-                 PreparedStatement ps = con.prepareStatement(
-                         "SELECT item_id,item_name,brand,available_quantity,unit_price,barcode FROM Inventory WHERE item_id=?")) {
-                ps.setInt(1, id);
-                try (ResultSet rs = ps.executeQuery()) {
-                    return rs.next() ? Optional.of(mapLegacy(rs)) : Optional.empty();
-                }
-            } catch (SQLException e2) { throw new RuntimeException(e2); }
+            return findAll().stream().filter(i -> i.getId() == id).findFirst();
         }
     }
 
@@ -92,7 +93,9 @@ public class JdbcInventoryRepository implements InventoryRepository {
     }
 
     private InventoryItem insert(InventoryItem item) {
-        String sql = "INSERT INTO Inventory(item_name,brand,available_quantity,unit_price,barcode,hsn_sac,item_type,rim_size) VALUES(?,?,?,?,?,?,?,?)";
+        String sql = "INSERT INTO Inventory(item_name,brand,available_quantity,unit_price,barcode,hsn_sac,item_type,"
+                + "rim_size,tyre_size,pattern,tyre_kind,product_code,mrp,purchase_id) "
+                + "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         try (Connection con = DatabaseConfig.get();
              PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             bind(ps, item);
@@ -105,11 +108,13 @@ public class JdbcInventoryRepository implements InventoryRepository {
     }
 
     private void update(InventoryItem item) {
-        String sql = "UPDATE Inventory SET item_name=?,brand=?,available_quantity=?,unit_price=?,barcode=?,hsn_sac=?,item_type=?,rim_size=? WHERE item_id=?";
+        String sql = "UPDATE Inventory SET item_name=?,brand=?,available_quantity=?,unit_price=?,barcode=?,hsn_sac=?,"
+                + "item_type=?,rim_size=?,tyre_size=?,pattern=?,tyre_kind=?,product_code=?,mrp=?,purchase_id=? "
+                + "WHERE item_id=?";
         try (Connection con = DatabaseConfig.get();
              PreparedStatement ps = con.prepareStatement(sql)) {
             bind(ps, item);
-            ps.setInt(9, item.getId());
+            ps.setInt(15, item.getId());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw wrapUniqueName(e, item.getName());
@@ -125,6 +130,13 @@ public class JdbcInventoryRepository implements InventoryRepository {
         ps.setString(6, blankToNull(item.getHsnSac()));
         ps.setString(7, item.getItemType() != null ? item.getItemType() : "PRODUCT");
         ps.setString(8, blankToNull(item.getRimSize()));
+        ps.setString(9, blankToNull(item.getTyreSize()));
+        ps.setString(10, blankToNull(item.getPattern()));
+        ps.setString(11, blankToNull(item.getTyreKind()));
+        ps.setString(12, blankToNull(item.getProductCode()));
+        ps.setDouble(13, item.getMrp());
+        if (item.getPurchaseId() != null) ps.setInt(14, item.getPurchaseId());
+        else ps.setNull(14, Types.INTEGER);
     }
 
     private static String blankToNull(String s) {
@@ -165,6 +177,15 @@ public class JdbcInventoryRepository implements InventoryRepository {
         try { i.setHsnSac(rs.getString("hsn_sac")); } catch (SQLException ignored) {}
         try { i.setItemType(rs.getString("item_type")); } catch (SQLException ignored) {}
         try { i.setRimSize(rs.getString("rim_size")); } catch (SQLException ignored) {}
+        try { i.setTyreSize(rs.getString("tyre_size")); } catch (SQLException ignored) {}
+        try { i.setPattern(rs.getString("pattern")); } catch (SQLException ignored) {}
+        try { i.setTyreKind(rs.getString("tyre_kind")); } catch (SQLException ignored) {}
+        try { i.setProductCode(rs.getString("product_code")); } catch (SQLException ignored) {}
+        try { i.setMrp(rs.getDouble("mrp")); } catch (SQLException ignored) {}
+        try {
+            int pid = rs.getInt("purchase_id");
+            if (!rs.wasNull()) i.setPurchaseId(pid);
+        } catch (SQLException ignored) {}
         if (i.getItemType() == null || i.getItemType().isBlank()) i.setItemType("PRODUCT");
         return i;
     }
@@ -178,7 +199,6 @@ public class JdbcInventoryRepository implements InventoryRepository {
         i.setUnitPrice(rs.getDouble("unit_price"));
         i.setReorderLevel(REORDER_LEVEL);
         try { i.setBarcode(rs.getString("barcode")); } catch (SQLException ignored) {}
-        i.setItemType("PRODUCT");
         return i;
     }
 }

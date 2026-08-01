@@ -2,7 +2,7 @@ package com.sevatyres.model;
 
 /**
  * Inventory item with stock status support.
- * unitPrice is tax-inclusive (CGST 9% + SGST 9%).
+ * unitPrice is tax-inclusive (CGST 9% + SGST 9%) — for tyres this is RCP.
  */
 public class InventoryItem {
     private int id;
@@ -17,6 +17,16 @@ public class InventoryItem {
     private String hsnSac;
     private String itemType; // PRODUCT, SERVICE, TYRE
     private String rimSize;
+    /** Tyre size e.g. 165 65 R14 79H */
+    private String tyreSize;
+    private String pattern;
+    /** TL / TT etc. */
+    private String tyreKind;
+    private String productCode;
+    /** MRP including GST */
+    private double mrp;
+    /** Optional link to Purchase_Info */
+    private Integer purchaseId;
 
     public InventoryItem() {}
 
@@ -66,6 +76,24 @@ public class InventoryItem {
 
     public String getRimSize() { return rimSize; }
     public void setRimSize(String rimSize) { this.rimSize = rimSize; }
+
+    public String getTyreSize() { return tyreSize; }
+    public void setTyreSize(String tyreSize) { this.tyreSize = tyreSize; }
+
+    public String getPattern() { return pattern; }
+    public void setPattern(String pattern) { this.pattern = pattern; }
+
+    public String getTyreKind() { return tyreKind; }
+    public void setTyreKind(String tyreKind) { this.tyreKind = tyreKind; }
+
+    public String getProductCode() { return productCode; }
+    public void setProductCode(String productCode) { this.productCode = productCode; }
+
+    public double getMrp() { return mrp; }
+    public void setMrp(double mrp) { this.mrp = mrp; }
+
+    public Integer getPurchaseId() { return purchaseId; }
+    public void setPurchaseId(Integer purchaseId) { this.purchaseId = purchaseId; }
 
     public boolean isTyre() {
         return itemType != null && itemType.equalsIgnoreCase("TYRE");

@@ -459,6 +459,10 @@ public final class Dialogs {
             final TextField brandField = styledField("Brand");
             final ComboBox<String> typeCombo = new ComboBox<>();
             final TextField rimField = styledField("Rim size");
+            final TextField sizeField = styledField("Size");
+            final TextField patternField = styledField("Pattern");
+            final TextField kindField = styledField("TL / TT");
+            final TextField codeField = styledField("Product code");
             final TextField hsnField = styledField("HSN/SAC");
             final TextField qtyField = styledField("0");
             final TextField unitPriceField = styledField("0.00");
@@ -468,7 +472,7 @@ public final class Dialogs {
             final Label lineTotalLbl = new Label("\u20b90.00");
             final Label stockLbl = new Label();
             final Button removeBtn = new Button("\u2715");
-            final VBox rimBox = new VBox(4);
+            final VBox tyreBox = new VBox(10);
             InventoryItem selected = null;
             VBox rowNode;
         }
@@ -496,8 +500,8 @@ public final class Dialogs {
                 inclusiveSum += split.inclusiveTotal();
 
                 boolean tyre = "Tyre".equals(r.typeCombo.getValue());
-                r.rimBox.setVisible(tyre);
-                r.rimBox.setManaged(tyre);
+                r.tyreBox.setVisible(tyre);
+                r.tyreBox.setManaged(tyre);
 
                 if (r.selected != null) {
                     InventoryItem fresh = AppServices.inventory().getById(r.selected.getId()).orElse(r.selected);
@@ -545,6 +549,10 @@ public final class Dialogs {
             r.typeCombo.getStyleClass().add("combo");
             r.typeCombo.setMaxWidth(Double.MAX_VALUE);
             r.rimField.setMaxWidth(Double.MAX_VALUE);
+            r.sizeField.setMaxWidth(Double.MAX_VALUE);
+            r.patternField.setMaxWidth(Double.MAX_VALUE);
+            r.kindField.setMaxWidth(Double.MAX_VALUE);
+            r.codeField.setMaxWidth(Double.MAX_VALUE);
             r.hsnField.setMaxWidth(Double.MAX_VALUE);
             r.brandField.setMaxWidth(Double.MAX_VALUE);
             r.qtyField.setMaxWidth(Double.MAX_VALUE);
@@ -560,13 +568,20 @@ public final class Dialogs {
                     String stock = item.getQuantity() == 0 ? "Out of Stock" : "Stock: " + item.getQuantity();
                     String brand = (item.getBrand() != null && !item.getBrand().isBlank())
                             ? " · " + item.getBrand() : "";
-                    setText(item.getName() + brand + "  [" + stock + "]");
+                    String size = (item.getTyreSize() != null && !item.getTyreSize().isBlank())
+                            ? " · " + item.getTyreSize() : "";
+                    setText(item.getName() + brand + size + "  [" + stock + "]");
                 }
             });
             r.combo.setButtonCell(r.combo.getCellFactory().call(null));
-            r.rimBox.getChildren().setAll(labeledField("Rim", r.rimField));
-            r.rimBox.setVisible(false);
-            r.rimBox.setManaged(false);
+            r.tyreBox.getChildren().setAll(
+                    labeledField("Rim", r.rimField),
+                    labeledField("Size", r.sizeField),
+                    labeledField("Pattern", r.patternField),
+                    labeledField("Type (TL/TT)", r.kindField),
+                    labeledField("Product Code", r.codeField));
+            r.tyreBox.setVisible(false);
+            r.tyreBox.setManaged(false);
 
             Runnable applyItem = () -> {
                 if (r.selected == null) return;
@@ -580,7 +595,11 @@ public final class Dialogs {
                     else if (t.equalsIgnoreCase("TYRE")) r.typeCombo.setValue("Tyre");
                     else r.typeCombo.setValue("Product");
                 }
-                if (r.selected.getRimSize() != null) r.rimField.setText(r.selected.getRimSize());
+                r.rimField.setText(r.selected.getRimSize() != null ? r.selected.getRimSize() : "");
+                r.sizeField.setText(r.selected.getTyreSize() != null ? r.selected.getTyreSize() : "");
+                r.patternField.setText(r.selected.getPattern() != null ? r.selected.getPattern() : "");
+                r.kindField.setText(r.selected.getTyreKind() != null ? r.selected.getTyreKind() : "");
+                r.codeField.setText(r.selected.getProductCode() != null ? r.selected.getProductCode() : "");
                 updateTotalsRef[0].run();
             };
 
@@ -624,7 +643,7 @@ public final class Dialogs {
             // Two-column layout under product name so every field stays readable
             VBox leftCol = new VBox(10,
                     labeledField("Type", r.typeCombo),
-                    r.rimBox,
+                    r.tyreBox,
                     labeledField("HSN/SAC", r.hsnField),
                     labeledField("Brand", r.brandField),
                     labeledField("Quantity", r.qtyField));
@@ -1222,39 +1241,147 @@ public final class Dialogs {
         presentDialog(stage, content, buttonRow(cancelBtn, generateBtn));
     }
 
-    // â”€â”€â”€ Add Inventory Item dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // --- Add / Edit Inventory Item -------------------------------------------------
 
     public static void showAddItem(Consumer<InventoryItem> onSaved) {
-        Stage stage = buildDialogStage("Add Inventory Item");
-        VBox content = contentVBox();
-        Label title = dialogTitle("Add Item");
-        Label sub   = dialogSub("Unit price is inclusive of CGST 9% + SGST 9%. Attach a barcode to scan in transactions.");
+        showInventoryItemDialog(null, onSaved);
+    }
 
-        TextField nameField    = styledField("Item name");
-        TextField brandField   = styledField("Brand");
-        TextField hsnField     = styledField("HSN/SAC");
-        TextField qtyField     = styledField("0");
-        TextField priceField   = styledField("0.00");
+    public static void showEditItem(InventoryItem item, Consumer<InventoryItem> onSaved) {
+        showInventoryItemDialog(item, onSaved);
+    }
+
+    private static void showInventoryItemDialog(InventoryItem existing, Consumer<InventoryItem> onSaved) {
+        boolean editing = existing != null;
+        Stage stage = buildDialogStage(editing ? "Edit Item — " + existing.getName() : "Add Inventory Item");
+        VBox content = contentVBox();
+        Label title = dialogTitle(editing ? "Edit Item" : "Add Item");
+        Label sub = dialogSub(editing
+                ? "Update details for \"" + existing.getName() + "\". Prices are tax-inclusive (CGST 9% + SGST 9%)."
+                : "Prices are tax-inclusive (CGST 9% + SGST 9%). For tyres, use Size / Pattern / Type / Product Code from the price list.");
+
+        TextField nameField = styledField("Item name");
+        TextField brandField = styledField("Brand");
+        ComboBox<String> typeCombo = new ComboBox<>();
+        typeCombo.getItems().addAll("Product", "Service", "Tyre");
+        typeCombo.setValue("Product");
+        typeCombo.getStyleClass().add("combo");
+        typeCombo.setMaxWidth(Double.MAX_VALUE);
+        TextField hsnField = styledField("HSN/SAC");
+        TextField qtyField = styledField("0");
+        TextField priceField = styledField("0.00");
+        TextField mrpField = styledField("0.00");
         TextField barcodeField = styledField("Barcode (scan or type)");
+
+        TextField rimField = styledField("e.g. 14");
+        TextField sizeField = styledField("e.g. 165/65 R14 79H");
+        TextField patternField = styledField("Pattern");
+        TextField kindField = styledField("TL / TT");
+        TextField codeField = styledField("Product code");
+
+        ComboBox<PurchaseInfo> purchaseCombo = new ComboBox<>();
+        purchaseCombo.getItems().add(null);
+        purchaseCombo.getItems().addAll(AppServices.purchases().getAll());
+        purchaseCombo.setPromptText("Link purchase info (buying price)\u2026");
+        purchaseCombo.setMaxWidth(Double.MAX_VALUE);
+        purchaseCombo.getStyleClass().add("combo");
+        purchaseCombo.setCellFactory(lv -> new ListCell<>() {
+            @Override protected void updateItem(PurchaseInfo p, boolean empty) {
+                super.updateItem(p, empty);
+                if (empty) { setText(null); return; }
+                if (p == null) { setText("(None)"); return; }
+                String size = p.getTyreSize() != null && !p.getTyreSize().isBlank()
+                        ? " · " + p.getTyreSize() : "";
+                setText(p.getItemName() + size + "  —  buy \u20b9"
+                        + String.format("%.2f", p.getBuyingPrice()));
+            }
+        });
+        purchaseCombo.setButtonCell(purchaseCombo.getCellFactory().call(null));
+        purchaseCombo.setOnAction(e -> {
+            PurchaseInfo p = purchaseCombo.getValue();
+            if (p == null) return;
+            if (nameField.getText().isBlank()) nameField.setText(p.getItemName());
+            if (brandField.getText().isBlank() && p.getBrand() != null) brandField.setText(p.getBrand());
+            if (rimField.getText().isBlank() && p.getRimSize() != null) rimField.setText(p.getRimSize());
+            if (sizeField.getText().isBlank() && p.getTyreSize() != null) sizeField.setText(p.getTyreSize());
+            if (patternField.getText().isBlank() && p.getPattern() != null) patternField.setText(p.getPattern());
+            if (kindField.getText().isBlank() && p.getTyreKind() != null) kindField.setText(p.getTyreKind());
+            if (codeField.getText().isBlank() && p.getProductCode() != null) codeField.setText(p.getProductCode());
+            if (p.getRcp() > 0 && (priceField.getText().isBlank() || "0.00".equals(priceField.getText().trim()))) {
+                priceField.setText(String.format("%.2f", p.getRcp()));
+            }
+            if (p.getMrp() > 0) mrpField.setText(String.format("%.2f", p.getMrp()));
+            if (p.getRimSize() != null || p.getTyreSize() != null) typeCombo.setValue("Tyre");
+        });
+
+        Label priceLbl = new Label("Unit Price / RCP incl. tax (\u20b9)");
+        VBox tyreBox = new VBox(10,
+                labeledField("Rim", rimField),
+                labeledField("Size", sizeField),
+                labeledField("Pattern", patternField),
+                labeledField("Type (TL/TT)", kindField),
+                labeledField("Product Code", codeField),
+                labeledField("MRP incl. GST (\u20b9)", mrpField));
+        tyreBox.setVisible(false);
+        tyreBox.setManaged(false);
+
+        Runnable syncTyreVisibility = () -> {
+            boolean tyre = "Tyre".equals(typeCombo.getValue());
+            tyreBox.setVisible(tyre);
+            tyreBox.setManaged(tyre);
+            priceLbl.setText(tyre ? "Recommended Consumer Price incl. GST (\u20b9)"
+                    : "Unit Price incl. tax (\u20b9)");
+        };
+        typeCombo.valueProperty().addListener((o, a, b) -> syncTyreVisibility.run());
+
+        if (editing) {
+            nameField.setText(existing.getName());
+            if (existing.getBrand() != null) brandField.setText(existing.getBrand());
+            if (existing.getHsnSac() != null) hsnField.setText(existing.getHsnSac());
+            qtyField.setText(String.valueOf(existing.getQuantity()));
+            priceField.setText(String.format("%.2f", existing.getUnitPrice()));
+            mrpField.setText(String.format("%.2f", existing.getMrp()));
+            if (existing.getBarcode() != null) barcodeField.setText(existing.getBarcode());
+            if (existing.getRimSize() != null) rimField.setText(existing.getRimSize());
+            if (existing.getTyreSize() != null) sizeField.setText(existing.getTyreSize());
+            if (existing.getPattern() != null) patternField.setText(existing.getPattern());
+            if (existing.getTyreKind() != null) kindField.setText(existing.getTyreKind());
+            if (existing.getProductCode() != null) codeField.setText(existing.getProductCode());
+            String t = existing.getItemType();
+            if (t != null) {
+                if (t.equalsIgnoreCase("SERVICE")) typeCombo.setValue("Service");
+                else if (t.equalsIgnoreCase("TYRE")) typeCombo.setValue("Tyre");
+                else typeCombo.setValue("Product");
+            }
+            if (existing.getPurchaseId() != null) {
+                purchaseCombo.getItems().stream()
+                        .filter(p -> p != null && p.getId() == existing.getPurchaseId())
+                        .findFirst().ifPresent(purchaseCombo::setValue);
+            }
+        }
+        syncTyreVisibility.run();
+
         Label barcodeHint = new Label("Attach a USB barcode scanner to auto-fill this field.");
         barcodeHint.setStyle("-fx-font-size:11px; -fx-text-fill: -neutral-400;");
 
         VBox form = new VBox(14,
                 labeledField("Name *", nameField),
                 labeledField("Brand", brandField),
+                labeledField("Type", typeCombo),
                 labeledField("HSN/SAC", hsnField),
                 labeledField("Quantity", qtyField),
-                labeledField("Unit Price incl. tax (\u20b9)", priceField),
+                new VBox(4, priceLbl, priceField),
+                tyreBox,
+                labeledField("Purchase Info (buying cost)", purchaseCombo),
                 new VBox(4, labeledField("Barcode", barcodeField), barcodeHint));
 
         Label err = errLabel();
         content.getChildren().addAll(new VBox(4, title, sub), new Separator(), form, err);
 
-        Button cancelBtn  = new Button("Cancel");
+        Button cancelBtn = new Button("Cancel");
         cancelBtn.getStyleClass().addAll("btn", "btn-secondary");
-        Button confirmBtn = new Button("Add Item");
+        Button confirmBtn = new Button(editing ? "Save Changes" : "Add Item");
         confirmBtn.getStyleClass().add("btn");
-
         cancelBtn.setOnAction(e -> stage.close());
         confirmBtn.setOnAction(e -> {
             String name = nameField.getText().trim();
@@ -1264,18 +1391,55 @@ public final class Dialogs {
             catch (NumberFormatException ex) { err.setText("Quantity must be a non-negative integer."); return; }
             double price;
             try { price = Double.parseDouble(priceField.getText().trim()); if (price < 0) throw new NumberFormatException(); }
-            catch (NumberFormatException ex) { err.setText("Unit price must be a non-negative number."); return; }
+            catch (NumberFormatException ex) { err.setText("Unit / RCP price must be a non-negative number."); return; }
+            double mrp = 0;
+            try {
+                String mrpText = mrpField.getText().trim();
+                if (!mrpText.isEmpty()) {
+                    mrp = Double.parseDouble(mrpText);
+                    if (mrp < 0) throw new NumberFormatException();
+                }
+            } catch (NumberFormatException ex) { err.setText("MRP must be a non-negative number."); return; }
 
-            InventoryItem item = new InventoryItem();
+            boolean tyre = "Tyre".equals(typeCombo.getValue());
+            if (tyre && rimField.getText().trim().isEmpty()) {
+                err.setText("Rim is required for tyre items.");
+                return;
+            }
+
+            InventoryItem item = editing ? existing : new InventoryItem();
             item.setName(name);
             item.setBrand(brandField.getText().trim());
             item.setHsnSac(hsnField.getText().trim());
             item.setQuantity(qty);
             item.setUnitPrice(price);
+            item.setMrp(mrp);
             String bc = barcodeField.getText().trim();
-            if (!bc.isEmpty()) item.setBarcode(bc);
+            item.setBarcode(bc.isEmpty() ? null : bc);
+            String typeUi = typeCombo.getValue() != null ? typeCombo.getValue() : "Product";
+            item.setItemType(typeUi.toUpperCase());
+            if (tyre) {
+                item.setRimSize(rimField.getText().trim());
+                item.setTyreSize(sizeField.getText().trim());
+                item.setPattern(patternField.getText().trim());
+                item.setTyreKind(kindField.getText().trim());
+                item.setProductCode(codeField.getText().trim());
+            } else {
+                item.setRimSize(null);
+                item.setTyreSize(null);
+                item.setPattern(null);
+                item.setTyreKind(null);
+                item.setProductCode(null);
+                item.setMrp(0);
+            }
+            PurchaseInfo selectedPurchase = purchaseCombo.getValue();
+            item.setPurchaseId(selectedPurchase != null ? selectedPurchase.getId() : null);
+
             try {
-                InventoryItem saved = AppServices.inventory().addItem(item);
+                InventoryItem saved = editing
+                        ? AppServices.inventory().updateItem(item)
+                        : AppServices.inventory().addItem(item);
+                linkInventoryToPurchase(saved);
                 stage.close();
                 if (onSaved != null) onSaved.accept(saved);
             } catch (IllegalArgumentException ex) {
@@ -1294,82 +1458,22 @@ public final class Dialogs {
         presentDialog(stage, content, buttonRow(cancelBtn, confirmBtn));
     }
 
-    // â”€â”€â”€ Edit Inventory Item dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-    public static void showEditItem(InventoryItem item, Consumer<InventoryItem> onSaved) {
-        Stage stage = buildDialogStage("Edit Item — " + item.getName());
-        VBox content = contentVBox();
-        Label title = dialogTitle("Edit Item");
-        Label sub   = dialogSub("Update the details for \"" + item.getName() + "\". Price is tax-inclusive.");
-
-        TextField nameField    = styledField("Item name");  nameField.setText(item.getName());
-        TextField brandField   = styledField("Brand");
-        if (item.getBrand() != null) brandField.setText(item.getBrand());
-        TextField hsnField     = styledField("HSN/SAC");
-        if (item.getHsnSac() != null) hsnField.setText(item.getHsnSac());
-        TextField qtyField     = styledField("0");          qtyField.setText(String.valueOf(item.getQuantity()));
-        TextField priceField   = styledField("0.00");       priceField.setText(String.format("%.2f", item.getUnitPrice()));
-        TextField barcodeField = styledField("Barcode (scan or type)");
-        if (item.getBarcode() != null) barcodeField.setText(item.getBarcode());
-
-        VBox form = new VBox(14,
-                labeledField("Name *", nameField),
-                labeledField("Brand", brandField),
-                labeledField("HSN/SAC", hsnField),
-                labeledField("Quantity", qtyField),
-                labeledField("Unit Price incl. tax (\u20b9)", priceField),
-                labeledField("Barcode", barcodeField));
-
-        Label err = errLabel();
-        content.getChildren().addAll(new VBox(4, title, sub), new Separator(), form, err);
-
-        Button cancelBtn  = new Button("Cancel");
-        cancelBtn.getStyleClass().addAll("btn", "btn-secondary");
-        Button confirmBtn = new Button("Save Changes");
-        confirmBtn.getStyleClass().add("btn");
-
-        cancelBtn.setOnAction(e -> stage.close());
-        confirmBtn.setOnAction(e -> {
-            String name = nameField.getText().trim();
-            if (name.isEmpty()) { err.setText("Name is required."); return; }
-            int qty;
-            try { qty = Integer.parseInt(qtyField.getText().trim()); if (qty < 0) throw new NumberFormatException(); }
-            catch (NumberFormatException ex) { err.setText("Quantity must be a non-negative integer."); return; }
-            double price;
-            try { price = Double.parseDouble(priceField.getText().trim()); if (price < 0) throw new NumberFormatException(); }
-            catch (NumberFormatException ex) { err.setText("Unit price must be a non-negative number."); return; }
-            item.setName(name);
-            item.setBrand(brandField.getText().trim());
-            item.setHsnSac(hsnField.getText().trim());
-            item.setQuantity(qty);
-            item.setUnitPrice(price);
-            String bc = barcodeField.getText().trim();
-            item.setBarcode(bc.isEmpty() ? null : bc);
-            try {
-                InventoryItem updated = AppServices.inventory().updateItem(item);
-                stage.close();
-                if (onSaved != null) onSaved.accept(updated);
-            } catch (IllegalArgumentException ex) {
-                err.setText(ex.getMessage());
-            } catch (RuntimeException ex) {
-                Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-                String msg = cause.getMessage() != null ? cause.getMessage() : "Could not save item.";
-                if (msg.contains("uq_inventory_name") || msg.contains("already exists")) {
-                    err.setText("An item named \"" + name + "\" already exists. Use a different name.");
-                } else {
-                    err.setText("Could not save item: " + msg);
-                }
+    /** Keep Purchase_Info.inventory_id in sync when inventory links a purchase row. */
+    private static void linkInventoryToPurchase(InventoryItem item) {
+        if (item == null || item.getId() <= 0 || item.getPurchaseId() == null) return;
+        AppServices.purchases().getById(item.getPurchaseId()).ifPresent(p -> {
+            if (p.getInventoryId() == null || p.getInventoryId() != item.getId()) {
+                p.setInventoryId(item.getId());
+                AppServices.purchases().save(p);
             }
         });
-
-        presentDialog(stage, content, buttonRow(cancelBtn, confirmBtn));
     }
 
     public static void showPurchaseInfo(PurchaseInfo existing, Consumer<PurchaseInfo> onSaved) {
         Stage stage = buildDialogStage(existing == null ? "Add Purchase Info" : "Edit Purchase Info");
         VBox content = contentVBox();
         Label title = dialogTitle(existing == null ? "Add Purchase Info" : "Edit Purchase Info");
-        Label sub = dialogSub("Record item name and buying price.");
+        Label sub = dialogSub("Same columns as dealer price lists: Rim, Size, Pattern, Type, Product Code, RCP, MRP + buying price.");
 
         ComboBox<InventoryItem> invCombo = new ComboBox<>();
         invCombo.getItems().addAll(AppServices.inventory().getAll());
@@ -1384,12 +1488,48 @@ public final class Dialogs {
         });
         invCombo.setButtonCell(invCombo.getCellFactory().call(null));
 
-        TextField nameField = styledField("Item name");
+        TextField nameField = styledField("Item / pattern name");
+        TextField brandField = styledField("Brand");
+        TextField rimField = styledField("e.g. 14");
+        TextField sizeField = styledField("e.g. 165/65 R14 79H");
+        TextField patternField = styledField("Pattern");
+        TextField kindField = styledField("TL / TT");
+        TextField codeField = styledField("Product code");
         TextField priceField = styledField("0.00");
+        TextField rcpField = styledField("0.00");
+        TextField mrpField = styledField("0.00");
         TextField notesField = styledField("Notes");
+
+        Runnable fillFromInventory = () -> {
+            InventoryItem it = invCombo.getValue();
+            if (it == null) return;
+            if (nameField.getText().isBlank()) nameField.setText(it.getName());
+            if (brandField.getText().isBlank() && it.getBrand() != null) brandField.setText(it.getBrand());
+            if (rimField.getText().isBlank() && it.getRimSize() != null) rimField.setText(it.getRimSize());
+            if (sizeField.getText().isBlank() && it.getTyreSize() != null) sizeField.setText(it.getTyreSize());
+            if (patternField.getText().isBlank() && it.getPattern() != null) patternField.setText(it.getPattern());
+            if (kindField.getText().isBlank() && it.getTyreKind() != null) kindField.setText(it.getTyreKind());
+            if (codeField.getText().isBlank() && it.getProductCode() != null) codeField.setText(it.getProductCode());
+            if (rcpField.getText().isBlank() || "0.00".equals(rcpField.getText().trim())) {
+                rcpField.setText(String.format("%.2f", it.getUnitPrice()));
+            }
+            if ((mrpField.getText().isBlank() || "0.00".equals(mrpField.getText().trim())) && it.getMrp() > 0) {
+                mrpField.setText(String.format("%.2f", it.getMrp()));
+            }
+        };
+        invCombo.setOnAction(e -> fillFromInventory.run());
+
         if (existing != null) {
             nameField.setText(existing.getItemName());
+            if (existing.getBrand() != null) brandField.setText(existing.getBrand());
+            if (existing.getRimSize() != null) rimField.setText(existing.getRimSize());
+            if (existing.getTyreSize() != null) sizeField.setText(existing.getTyreSize());
+            if (existing.getPattern() != null) patternField.setText(existing.getPattern());
+            if (existing.getTyreKind() != null) kindField.setText(existing.getTyreKind());
+            if (existing.getProductCode() != null) codeField.setText(existing.getProductCode());
             priceField.setText(String.format("%.2f", existing.getBuyingPrice()));
+            rcpField.setText(String.format("%.2f", existing.getRcp()));
+            mrpField.setText(String.format("%.2f", existing.getMrp()));
             if (existing.getNotes() != null) notesField.setText(existing.getNotes());
             if (existing.getInventoryId() != null) {
                 invCombo.getItems().stream()
@@ -1397,15 +1537,19 @@ public final class Dialogs {
                         .findFirst().ifPresent(invCombo::setValue);
             }
         }
-        invCombo.setOnAction(e -> {
-            InventoryItem it = invCombo.getValue();
-            if (it != null && nameField.getText().isBlank()) nameField.setText(it.getName());
-        });
 
         VBox form = new VBox(14,
                 labeledField("Inventory Item", invCombo),
                 labeledField("Item Name *", nameField),
-                labeledField("Buying Price (\u20b9)", priceField),
+                labeledField("Brand", brandField),
+                labeledField("Rim", rimField),
+                labeledField("Size", sizeField),
+                labeledField("Pattern", patternField),
+                labeledField("Type (TL/TT)", kindField),
+                labeledField("Product Code", codeField),
+                labeledField("Buying Price (\u20b9) *", priceField),
+                labeledField("RCP incl. GST (\u20b9)", rcpField),
+                labeledField("MRP incl. GST (\u20b9)", mrpField),
                 labeledField("Notes", notesField));
         Label err = errLabel();
         content.getChildren().addAll(new VBox(4, title, sub), new Separator(), form, err);
@@ -1426,14 +1570,40 @@ public final class Dialogs {
                 err.setText("Buying price must be a non-negative number.");
                 return;
             }
+            double rcp = parseMoneyOrZero(rcpField, err, "RCP");
+            if (rcp < 0) return;
+            double mrp = parseMoneyOrZero(mrpField, err, "MRP");
+            if (mrp < 0) return;
+
             PurchaseInfo p = existing != null ? existing : new PurchaseInfo();
             InventoryItem linked = invCombo.getValue();
             p.setInventoryId(linked != null ? linked.getId() : null);
             p.setItemName(name);
+            p.setBrand(brandField.getText().trim());
+            p.setRimSize(rimField.getText().trim());
+            p.setTyreSize(sizeField.getText().trim());
+            p.setPattern(patternField.getText().trim());
+            p.setTyreKind(kindField.getText().trim());
+            p.setProductCode(codeField.getText().trim());
             p.setBuyingPrice(price);
+            p.setRcp(rcp);
+            p.setMrp(mrp);
             p.setNotes(notesField.getText().trim());
             try {
                 PurchaseInfo saved = AppServices.purchases().save(p);
+                // Keep inventory sell/MRP in sync when linked
+                if (linked != null) {
+                    if (saved.getRcp() > 0) linked.setUnitPrice(saved.getRcp());
+                    if (saved.getMrp() > 0) linked.setMrp(saved.getMrp());
+                    if (saved.getRimSize() != null && !saved.getRimSize().isBlank()) linked.setRimSize(saved.getRimSize());
+                    if (saved.getTyreSize() != null && !saved.getTyreSize().isBlank()) linked.setTyreSize(saved.getTyreSize());
+                    if (saved.getPattern() != null && !saved.getPattern().isBlank()) linked.setPattern(saved.getPattern());
+                    if (saved.getTyreKind() != null && !saved.getTyreKind().isBlank()) linked.setTyreKind(saved.getTyreKind());
+                    if (saved.getProductCode() != null && !saved.getProductCode().isBlank()) linked.setProductCode(saved.getProductCode());
+                    linked.setPurchaseId(saved.getId());
+                    linked.setItemType("TYRE");
+                    AppServices.inventory().updateItem(linked);
+                }
                 stage.close();
                 if (onSaved != null) onSaved.accept(saved);
             } catch (Exception ex) {
@@ -1441,6 +1611,20 @@ public final class Dialogs {
             }
         });
         presentDialog(stage, content, buttonRow(cancelBtn, saveBtn));
+    }
+
+    /** @return parsed value, or -1 if invalid (error label already set). */
+    private static double parseMoneyOrZero(TextField field, Label err, String label) {
+        String t = field.getText() == null ? "" : field.getText().trim();
+        if (t.isEmpty()) return 0;
+        try {
+            double v = Double.parseDouble(t.replace(",", ""));
+            if (v < 0) throw new NumberFormatException();
+            return v;
+        } catch (NumberFormatException ex) {
+            err.setText(label + " must be a non-negative number.");
+            return -1;
+        }
     }
 
     // --- Stock Adjustment dialog ---

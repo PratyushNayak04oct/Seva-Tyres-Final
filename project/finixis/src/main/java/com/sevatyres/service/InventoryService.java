@@ -16,6 +16,7 @@ public class InventoryService {
     public List<InventoryItem>     getAll()                     { return repo.findAll(); }
     public Optional<InventoryItem> getById(int id)              { return repo.findById(id); }
     public Optional<InventoryItem> getByBarcode(String barcode) { return repo.findByBarcode(barcode); }
+    public Optional<InventoryItem> getByName(String name)       { return repo.findByName(name); }
 
     public InventoryItem addItem(String name, int quantity, double unitPrice) {
         InventoryItem item = new InventoryItem();

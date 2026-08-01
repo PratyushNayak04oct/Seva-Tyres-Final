@@ -176,7 +176,21 @@ public final class DatabaseConfig {
                 "last_seq INTEGER NOT NULL DEFAULT 0)",
             "INSERT INTO Invoice_Sequence(fy_label, last_seq) SELECT '26/27', 69 " +
                 "WHERE NOT EXISTS (SELECT 1 FROM Invoice_Sequence WHERE fy_label = '26/27')",
-            "ALTER TABLE Sale_Transaction ADD COLUMN net_profit DECIMAL(15,2) NOT NULL DEFAULT 0"
+            "ALTER TABLE Sale_Transaction ADD COLUMN net_profit DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "ALTER TABLE Inventory ADD COLUMN tyre_size VARCHAR(80)",
+            "ALTER TABLE Inventory ADD COLUMN pattern VARCHAR(100)",
+            "ALTER TABLE Inventory ADD COLUMN tyre_kind VARCHAR(20)",
+            "ALTER TABLE Inventory ADD COLUMN product_code VARCHAR(50)",
+            "ALTER TABLE Inventory ADD COLUMN mrp DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "ALTER TABLE Inventory ADD COLUMN purchase_id INTEGER",
+            "ALTER TABLE Purchase_Info ADD COLUMN brand VARCHAR(200)",
+            "ALTER TABLE Purchase_Info ADD COLUMN rim_size VARCHAR(50)",
+            "ALTER TABLE Purchase_Info ADD COLUMN tyre_size VARCHAR(80)",
+            "ALTER TABLE Purchase_Info ADD COLUMN pattern VARCHAR(100)",
+            "ALTER TABLE Purchase_Info ADD COLUMN tyre_kind VARCHAR(20)",
+            "ALTER TABLE Purchase_Info ADD COLUMN product_code VARCHAR(50)",
+            "ALTER TABLE Purchase_Info ADD COLUMN rcp DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "ALTER TABLE Purchase_Info ADD COLUMN mrp DECIMAL(15,2) NOT NULL DEFAULT 0"
         };
         try (Connection conn = get(); Statement stmt = conn.createStatement()) {
             for (String sql : migrations) {

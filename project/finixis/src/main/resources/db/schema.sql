@@ -22,6 +22,12 @@ CREATE TABLE IF NOT EXISTS Inventory (
     hsn_sac            VARCHAR(50),
     item_type          VARCHAR(20)   DEFAULT 'PRODUCT',
     rim_size           VARCHAR(50),
+    tyre_size          VARCHAR(80),
+    pattern            VARCHAR(100),
+    tyre_kind          VARCHAR(20),
+    product_code       VARCHAR(50),
+    mrp                DECIMAL(15,2) NOT NULL DEFAULT 0,
+    purchase_id        INTEGER,
     CONSTRAINT uq_inventory_name UNIQUE (item_name)
 );
 
@@ -230,12 +236,20 @@ INSERT INTO Company_Info(company_id, company_name, city, state, pincode)
 SELECT 1, 'Seva Tyres', 'Bhubaneswar', 'Odisha', '751001'
 WHERE NOT EXISTS (SELECT 1 FROM Company_Info WHERE company_id = 1);
 
--- Purchase Information: buying price per item
+-- Purchase Information: buying price + price-list columns (Rim/Size/Pattern/Type/Code/RCP/MRP)
 CREATE TABLE IF NOT EXISTS Purchase_Info (
     purchase_id   INTEGER       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     inventory_id  INTEGER,
     item_name     VARCHAR(200)  NOT NULL,
+    brand         VARCHAR(200),
+    rim_size      VARCHAR(50),
+    tyre_size     VARCHAR(80),
+    pattern       VARCHAR(100),
+    tyre_kind     VARCHAR(20),
+    product_code  VARCHAR(50),
     buying_price  DECIMAL(15,2) NOT NULL DEFAULT 0 CHECK (buying_price >= 0),
+    rcp           DECIMAL(15,2) NOT NULL DEFAULT 0,
+    mrp           DECIMAL(15,2) NOT NULL DEFAULT 0,
     notes         VARCHAR(500),
     CONSTRAINT fk_pi_inventory FOREIGN KEY (inventory_id) REFERENCES Inventory(item_id) ON DELETE SET NULL
 );

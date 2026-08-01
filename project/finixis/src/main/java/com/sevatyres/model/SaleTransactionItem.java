@@ -65,9 +65,10 @@ public class SaleTransactionItem {
 
     /** Description line for invoice (includes rim for tyres). */
     public String getInvoiceDescription() {
+        StringBuilder sb = new StringBuilder(itemName != null ? itemName : "");
         if (rimSize != null && !rimSize.isBlank()) {
-            return itemName + "\nRim: " + rimSize;
+            sb.append("\nRim: ").append(rimSize);
         }
-        return itemName != null ? itemName : "";
+        return sb.toString();
     }
 }
