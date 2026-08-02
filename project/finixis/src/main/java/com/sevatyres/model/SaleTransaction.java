@@ -39,7 +39,7 @@ public class SaleTransaction {
     // Computed total = taxable + cgst + sgst - discount + roundOff (approx)
     private double total;
 
-    /** Net profit after removing 18% tax from (sell − buy) × qty, with discount/round-off. */
+    /** Profit = total billing − buying cost − taxes − discount (+ round-off). */
     private double netProfit;
 
     // Optional customer info (for invoice; mandatory if credit > 0)

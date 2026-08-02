@@ -1,0 +1,26 @@
+   12.0   496.0 0.80 21565R16
+   12.5   786.5 0.85 DestinationLE02
+   13.0   990.5 0.66 TL
+   12.5  1208.5 0.87 PSR0D53F/54F/78F
+   13.0  1522.5 0.78 8650
+   13.0  1791.0 0.80 9303
+   63.0   494.5 0.82 235 70 R16
+   64.0   785.5 0.86 Destination LE02
+   65.0   990.0 0.66 TL
+   65.0  1207.5 0.82 PSR0D52F
+   65.0  1522.5 0.73 8100
+   65.0  1791.0 0.80 8673
+  144.0   305.0 0.58 17
+  144.0   494.0 0.85 225 60 R17
+  144.0   786.0 0.86 Destination LE02
+  146.0   989.5 0.64 TL
+  145.5  1207.0 0.90 PSR0D55F/77F/80F/79F
+  145.5  1522.0 0.56 9750
+  145.0  1791.0 0.74 10493
+  359.0  1480.5 0.81 RajivSharma
+  388.5   562.0 0.92 This price list supercedes all the previous price lists
+  389.2  1623.5 0.92 Executive Director - Sales & Marketing
+  485.5  1092.5 0.91 BRIDGESTONE INDIA PRIVATE LIMITED
+  518.8  1091.5 0.91 Regd. Office, H.O. & Factory:
+  549.0  1095.5 0.92 Plot No. A43, Phase-ll, MIDC Chakan, Village Sawardari Taluka Khed, Dist. Pune, Maharashtra - 410501, India
+  578.2  1094.5 0.86 CIN:U29101PN1996PTC147267

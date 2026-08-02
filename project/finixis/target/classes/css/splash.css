@@ -1,0 +1,87 @@
+/* Seva Tyres splash / loading screen */
+
+.splash-root {
+    -fx-background-color: linear-gradient(from 0% 0% to 100% 100%,
+        #0b1e3a 0%, #12305a 42%, #1a4a8a 78%, #1d4ed8 100%);
+}
+
+.splash-orb {
+    -fx-fill: transparent;
+    -fx-stroke: rgba(255, 255, 255, 0.14);
+    -fx-stroke-width: 1.5;
+}
+
+.splash-orb-accent {
+    -fx-fill: transparent;
+    -fx-stroke: rgba(110, 163, 255, 0.55);
+    -fx-stroke-width: 3;
+    -fx-stroke-line-cap: round;
+}
+
+.splash-mark {
+    -fx-background-color: rgba(255, 255, 255, 0.10);
+    -fx-background-radius: 28;
+    -fx-border-color: rgba(255, 255, 255, 0.18);
+    -fx-border-radius: 28;
+    -fx-border-width: 1;
+    -fx-padding: 18 22 18 22;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.35), 28, 0.2, 0, 10);
+}
+
+.splash-brand {
+    -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
+    -fx-font-size: 34px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #ffffff;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.35), 12, 0.2, 0, 2);
+}
+
+.splash-tagline {
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: rgba(226, 232, 240, 0.82);
+    -fx-letter-spacing: 1.5;
+}
+
+.splash-status {
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: rgba(241, 245, 249, 0.92);
+}
+
+.splash-percent {
+    -fx-font-family: "Consolas", "Cascadia Mono", monospace;
+    -fx-font-size: 12px;
+    -fx-text-fill: rgba(191, 219, 254, 0.95);
+}
+
+.splash-bar {
+    -fx-pref-height: 6;
+    -fx-min-height: 6;
+    -fx-max-height: 6;
+    -fx-background-color: rgba(255, 255, 255, 0.12);
+    -fx-background-radius: 8;
+}
+
+.splash-bar .track {
+    -fx-background-color: transparent;
+}
+
+.splash-bar .bar {
+    -fx-background-color: linear-gradient(to right, #60a5fa, #38bdf8, #93c5fd);
+    -fx-background-radius: 8;
+    -fx-background-insets: 0;
+}
+
+.splash-footer {
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-size: 11px;
+    -fx-text-fill: rgba(148, 163, 184, 0.85);
+}
+
+.splash-error {
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-size: 12px;
+    -fx-text-fill: #fecaca;
+    -fx-wrap-text: true;
+}

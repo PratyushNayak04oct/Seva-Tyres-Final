@@ -2,7 +2,8 @@ package com.sevatyres.model;
 
 /**
  * Inventory item with stock status support.
- * unitPrice is tax-inclusive (CGST 9% + SGST 9%) — for tyres this is RCP.
+ * unitPrice is tax-inclusive RCP / list price (CGST 9% + SGST 9%).
+ * billingAmount is the manual selling price used on bills (falls back to unitPrice if unset).
  */
 public class InventoryItem {
     private int id;
@@ -25,6 +26,8 @@ public class InventoryItem {
     private String productCode;
     /** MRP including GST */
     private double mrp;
+    /** Manual billing / selling amount (incl. tax). Entered in the app only. */
+    private double billingAmount;
     /** Optional link to Purchase_Info */
     private Integer purchaseId;
 
@@ -92,6 +95,16 @@ public class InventoryItem {
     public double getMrp() { return mrp; }
     public void setMrp(double mrp) { this.mrp = mrp; }
 
+    public double getBillingAmount() { return billingAmount; }
+    public void setBillingAmount(double billingAmount) { this.billingAmount = billingAmount; }
+
+    /**
+     * Price used when selling: billing amount if set, otherwise RCP / unit price.
+     */
+    public double getSellingPrice() {
+        return billingAmount > 0.009 ? billingAmount : unitPrice;
+    }
+
     public Integer getPurchaseId() { return purchaseId; }
     public void setPurchaseId(Integer purchaseId) { this.purchaseId = purchaseId; }
 
@@ -99,7 +112,8 @@ public class InventoryItem {
         return itemType != null && itemType.equalsIgnoreCase("TYRE");
     }
 
-    /** @deprecated Use getStockStatus() instead */
+    /** @deprecated Use {@link #getStockStatus()} instead */
+    @Deprecated
     public boolean isLowStock() {
         return quantity > 0 && quantity < 10;
     }
@@ -114,6 +128,6 @@ public class InventoryItem {
 
     @Override
     public String toString() {
-        return name + "  (₹" + String.format("%.2f", unitPrice) + "/unit)";
+        return name + "  (\u20b9" + String.format("%.2f", getSellingPrice()) + "/unit)";
     }
 }

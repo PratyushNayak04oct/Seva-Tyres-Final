@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS Inventory (
     tyre_kind          VARCHAR(20),
     product_code       VARCHAR(50),
     mrp                DECIMAL(15,2) NOT NULL DEFAULT 0,
+    billing_amount     DECIMAL(15,2) NOT NULL DEFAULT 0,
     purchase_id        INTEGER,
     CONSTRAINT uq_inventory_name UNIQUE (item_name)
 );
@@ -195,8 +196,9 @@ CREATE TABLE IF NOT EXISTS Sale_Transaction_Tax (
 CREATE INDEX IF NOT EXISTS idx_stt_sale ON Sale_Transaction_Tax(sale_id);
 
 -- Company profile (singleton row company_id = 1)
+-- H2 rejects "PRIMARY KEY DEFAULT"; keep DEFAULT before PRIMARY KEY for PG + H2.
 CREATE TABLE IF NOT EXISTS Company_Info (
-    company_id     INTEGER       PRIMARY KEY DEFAULT 1,
+    company_id     INTEGER       NOT NULL DEFAULT 1 PRIMARY KEY,
     company_name   VARCHAR(200)  NOT NULL DEFAULT 'Seva Tyres',
     owner_name     VARCHAR(200),
     email          VARCHAR(200),
@@ -263,4 +265,25 @@ CREATE TABLE IF NOT EXISTS Invoice_Sequence (
 INSERT INTO Invoice_Sequence(fy_label, last_seq)
 SELECT '26/27', 69
 WHERE NOT EXISTS (SELECT 1 FROM Invoice_Sequence WHERE fy_label = '26/27');
+
+-- Payables: money paid out by the shop
+CREATE TABLE IF NOT EXISTS Payable_Transaction (
+    payable_id   INTEGER       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    txn_number   VARCHAR(6)    NOT NULL,
+    txn_date     DATE          NOT NULL DEFAULT CURRENT_DATE,
+    paid_to      VARCHAR(200)  NOT NULL,
+    amount       DECIMAL(15,2) NOT NULL CHECK (amount > 0),
+    notes        VARCHAR(500),
+    created_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_payable_txn_number UNIQUE (txn_number)
+);
+
+CREATE TABLE IF NOT EXISTS Payable_Sequence (
+    id       INTEGER PRIMARY KEY,
+    last_num INTEGER NOT NULL DEFAULT 99999
+);
+
+INSERT INTO Payable_Sequence(id, last_num)
+SELECT 1, 99999
+WHERE NOT EXISTS (SELECT 1 FROM Payable_Sequence WHERE id = 1);
 

@@ -45,7 +45,7 @@ public final class DatabaseConfig {
                 System.out.println("[DB] Connected to PostgreSQL: " + pgUrl);
             } catch (Exception pgEx) {
                 System.err.println("[DB] PostgreSQL connection failed (" + pgEx.getMessage()
-                        + ") — falling back to H2 embedded database.");
+                        + ") - falling back to H2 embedded database.");
                 dataSource = null;
                 cfg = buildPoolConfig(props);
                 cfg.setJdbcUrl(h2Url(props));
@@ -117,7 +117,7 @@ public final class DatabaseConfig {
                 "tax_amount DECIMAL(15,2) NOT NULL DEFAULT 0," +
                 "CONSTRAINT fk_stt_sale FOREIGN KEY (sale_id) REFERENCES Sale_Transaction(sale_id) ON DELETE CASCADE)",
             "CREATE TABLE IF NOT EXISTS Company_Info (" +
-                "company_id INTEGER PRIMARY KEY DEFAULT 1," +
+                "company_id INTEGER NOT NULL DEFAULT 1 PRIMARY KEY," +
                 "company_name VARCHAR(200) NOT NULL DEFAULT 'Seva Tyres'," +
                 "owner_name VARCHAR(200)," +
                 "email VARCHAR(200)," +
@@ -182,6 +182,7 @@ public final class DatabaseConfig {
             "ALTER TABLE Inventory ADD COLUMN tyre_kind VARCHAR(20)",
             "ALTER TABLE Inventory ADD COLUMN product_code VARCHAR(50)",
             "ALTER TABLE Inventory ADD COLUMN mrp DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "ALTER TABLE Inventory ADD COLUMN billing_amount DECIMAL(15,2) NOT NULL DEFAULT 0",
             "ALTER TABLE Inventory ADD COLUMN purchase_id INTEGER",
             "ALTER TABLE Purchase_Info ADD COLUMN brand VARCHAR(200)",
             "ALTER TABLE Purchase_Info ADD COLUMN rim_size VARCHAR(50)",
@@ -190,7 +191,20 @@ public final class DatabaseConfig {
             "ALTER TABLE Purchase_Info ADD COLUMN tyre_kind VARCHAR(20)",
             "ALTER TABLE Purchase_Info ADD COLUMN product_code VARCHAR(50)",
             "ALTER TABLE Purchase_Info ADD COLUMN rcp DECIMAL(15,2) NOT NULL DEFAULT 0",
-            "ALTER TABLE Purchase_Info ADD COLUMN mrp DECIMAL(15,2) NOT NULL DEFAULT 0"
+            "ALTER TABLE Purchase_Info ADD COLUMN mrp DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "CREATE TABLE IF NOT EXISTS Payable_Transaction (" +
+                "payable_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY," +
+                "txn_number VARCHAR(6) NOT NULL UNIQUE," +
+                "txn_date DATE NOT NULL DEFAULT CURRENT_DATE," +
+                "paid_to VARCHAR(200) NOT NULL," +
+                "amount DECIMAL(15,2) NOT NULL," +
+                "notes VARCHAR(500)," +
+                "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE TABLE IF NOT EXISTS Payable_Sequence (" +
+                "id INTEGER PRIMARY KEY," +
+                "last_num INTEGER NOT NULL DEFAULT 99999)",
+            "INSERT INTO Payable_Sequence(id, last_num) SELECT 1, 99999 " +
+                "WHERE NOT EXISTS (SELECT 1 FROM Payable_Sequence WHERE id = 1)"
         };
         try (Connection conn = get(); Statement stmt = conn.createStatement()) {
             for (String sql : migrations) {

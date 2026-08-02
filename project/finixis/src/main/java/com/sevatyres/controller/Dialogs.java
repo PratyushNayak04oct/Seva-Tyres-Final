@@ -7,6 +7,7 @@ import com.sevatyres.service.SaleTransactionService;
 import com.sevatyres.viewmodel.FileGenerationService;
 import com.sevatyres.viewmodel.ThemeManager;
 import com.sevatyres.viewmodel.UiUtil;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -14,6 +15,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.io.File;
 import java.time.LocalDate;
@@ -240,7 +242,7 @@ public final class Dialogs {
                 if (item != null) {
                     try {
                         int qty = Integer.parseInt(qtyFields.get(i).getText().trim());
-                        if (qty > 0) total += item.getUnitPrice() * qty;
+                        if (qty > 0) total += item.getSellingPrice() * qty;
                     } catch (NumberFormatException ignored) {}
                 }
             }
@@ -266,7 +268,7 @@ public final class Dialogs {
                 @Override protected void updateItem(InventoryItem item, boolean empty) {
                     super.updateItem(item, empty);
                     setText(empty || item == null ? null
-                            : item.getName() + "  (" + UiUtil.money(item.getUnitPrice()) + "/unit)");
+                            : item.getName() + "  (" + UiUtil.money(item.getSellingPrice()) + "/unit)");
                 }
             });
             combo.setButtonCell(combo.getCellFactory().call(null));
@@ -392,7 +394,7 @@ public final class Dialogs {
                     try { qty = Math.max(1, Integer.parseInt(qtyFields.get(i).getText().trim())); }
                     catch (NumberFormatException ignored) {}
                     lineItems.add(new TransactionLineItem(
-                            item.getId(), item.getName(), qty, item.getUnitPrice()));
+                            item.getId(), item.getName(), qty, item.getSellingPrice()));
                     if (!desc.isEmpty()) desc.append(", ");
                     desc.append(qty).append("x ").append(item.getName());
                 }
@@ -407,7 +409,182 @@ public final class Dialogs {
         presentDialog(stage, content, buttonRow(cancelBtn, confirmBtn), 640);
     }
 
-    // â”€â”€â”€ New Sale Transaction dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // --- New Transaction: choose Receivable vs Payable ---------------------------
+
+    /**
+     * Ask whether the new entry is Receivables (sale) or Payables (money paid out).
+     * Receivables → existing sale dialog. Payables → payable dialog.
+     */
+    public static void showNewTransactionChooser(Runnable onChanged) {
+        Stage stage = buildDialogStage("New Transaction", 480, 560);
+        VBox content = contentVBox();
+        Label title = dialogTitle("New Transaction");
+        Label sub = dialogSub("Is this a Receivable (money coming in) or a Payable (money going out)?");
+
+        Button recvBtn = new Button("Receivables");
+        recvBtn.getStyleClass().add("btn");
+        recvBtn.setMaxWidth(Double.MAX_VALUE);
+        try {
+            FontIcon icon = new FontIcon("fas-file-invoice");
+            recvBtn.setGraphic(icon);
+            recvBtn.setGraphicTextGap(10);
+        } catch (Exception ignored) {}
+        Label recvHint = new Label("Sales / invoices — customer pays you");
+        recvHint.getStyleClass().add("text-muted");
+        recvHint.setStyle("-fx-font-size:12px;");
+
+        Button payBtn = new Button("Payables");
+        payBtn.getStyleClass().addAll("btn", "btn-secondary");
+        payBtn.setMaxWidth(Double.MAX_VALUE);
+        try {
+            FontIcon icon = new FontIcon("fas-hand-holding-usd");
+            payBtn.setGraphic(icon);
+            payBtn.setGraphicTextGap(10);
+        } catch (Exception ignored) {}
+        Label payHint = new Label("Payments you make — paid to someone");
+        payHint.getStyleClass().add("text-muted");
+        payHint.setStyle("-fx-font-size:12px;");
+
+        VBox recvCard = new VBox(8, recvBtn, recvHint);
+        recvCard.getStyleClass().add("section-card");
+        recvCard.setPadding(new Insets(16));
+        VBox payCard = new VBox(8, payBtn, payHint);
+        payCard.getStyleClass().add("section-card");
+        payCard.setPadding(new Insets(16));
+
+        Button cancelBtn = new Button("Cancel");
+        cancelBtn.getStyleClass().addAll("btn", "btn-secondary");
+        cancelBtn.setOnAction(e -> stage.close());
+
+        // Open follow-up dialogs AFTER this modal exits — nested showAndWait breaks JavaFX.
+        recvBtn.setOnAction(e -> {
+            stage.close();
+            Platform.runLater(() -> {
+                try {
+                    showNewSaleTransaction(saved -> {
+                        if (onChanged != null) onChanged.run();
+                        UiUtil.toast(App.getRoot(), "Receivable saved (Bill No: " + saved.getBillNo() + ")");
+                    });
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    info("Could not open Receivable",
+                            ex.getMessage() != null ? ex.getMessage() : "Unexpected error.");
+                }
+            });
+        });
+        payBtn.setOnAction(e -> {
+            stage.close();
+            Platform.runLater(() -> {
+                try {
+                    showPayableTransaction(null, saved -> {
+                        if (onChanged != null) onChanged.run();
+                        UiUtil.toast(App.getRoot(), "Payable saved (No: " + saved.getTxnNumber() + ")");
+                    });
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    info("Could not open Payable",
+                            ex.getMessage() != null ? ex.getMessage() : "Unexpected error.");
+                }
+            });
+        });
+
+        content.getChildren().addAll(new VBox(4, title, sub), new Separator(), recvCard, payCard);
+        presentDialog(stage, content, buttonRow(cancelBtn), 480);
+    }
+
+    public static void showPayableTransaction(PayableTransaction existing, Consumer<PayableTransaction> onSaved) {
+        boolean editing = existing != null;
+        Stage stage = buildDialogStage(editing ? "Edit Payable" : "New Payable", 560, 720);
+        VBox content = contentVBox();
+        Label title = dialogTitle(editing ? "Edit Payable" : "New Payable");
+        Label sub = dialogSub("Record money paid out. Unique number is auto-generated (6 digits) when you save.");
+
+        DatePicker datePicker = new DatePicker(editing && existing.getTxnDate() != null
+                ? existing.getTxnDate() : LocalDate.now());
+        datePicker.getStyleClass().add("date-picker");
+        datePicker.setMaxWidth(Double.MAX_VALUE);
+
+        TextField numberField = styledField("Auto on save");
+        numberField.setEditable(false);
+        if (editing) {
+            numberField.setText(existing.getTxnNumber());
+        } else {
+            numberField.setText("(assigned on save)");
+        }
+
+        TextField paidToField = styledField("Name of person / vendor");
+        if (editing && existing.getPaidTo() != null) paidToField.setText(existing.getPaidTo());
+
+        TextField amountField = styledField("0.00");
+        if (editing) amountField.setText(String.format("%.2f", existing.getAmount()));
+
+        TextField notesField = styledField("Notes (optional)");
+        if (editing && existing.getNotes() != null) notesField.setText(existing.getNotes());
+
+        VBox form = new VBox(14,
+                labeledField("Date of transaction *", datePicker),
+                labeledField("Unique number", numberField),
+                labeledField("Paid to (Name) *", paidToField),
+                labeledField("Amount (\u20b9) *", amountField),
+                labeledField("Notes", notesField));
+        Label err = errLabel();
+        content.getChildren().addAll(new VBox(4, title, sub), new Separator(), form, err);
+
+        Button cancelBtn = new Button("Cancel");
+        cancelBtn.getStyleClass().addAll("btn", "btn-secondary");
+        Button saveBtn = new Button(editing ? "Save Changes" : "Save Payable");
+        saveBtn.getStyleClass().add("btn");
+        cancelBtn.setOnAction(e -> stage.close());
+        saveBtn.setOnAction(e -> {
+            String paidTo = paidToField.getText().trim();
+            if (paidTo.isEmpty()) { err.setText("Paid to (name) is required."); return; }
+            double amount;
+            try {
+                amount = Double.parseDouble(amountField.getText().trim().replace(",", ""));
+                if (amount <= 0) throw new NumberFormatException();
+            } catch (NumberFormatException ex) {
+                err.setText("Amount must be a number greater than zero.");
+                return;
+            }
+            PayableTransaction p = editing ? existing : new PayableTransaction();
+            p.setTxnDate(datePicker.getValue() != null ? datePicker.getValue() : LocalDate.now());
+            if (editing) {
+                p.setTxnNumber(numberField.getText().trim());
+            } else {
+                p.setTxnNumber(null); // allocated in service/repo on save
+            }
+            p.setPaidTo(paidTo);
+            p.setAmount(amount);
+            p.setNotes(notesField.getText().trim());
+            try {
+                PayableTransaction saved = AppServices.payables().save(p);
+                stage.close();
+                if (onSaved != null) onSaved.accept(saved);
+            } catch (Exception ex) {
+                err.setText(ex.getMessage() != null ? ex.getMessage() : "Could not save payable.");
+            }
+        });
+        presentDialog(stage, content, buttonRow(cancelBtn, saveBtn), 560);
+    }
+
+    public static void showViewPayableTransaction(PayableTransaction p) {
+        Stage stage = buildDialogStage("Payable " + p.getTxnNumber());
+        VBox content = contentVBox();
+        Label title = dialogTitle("Payable details");
+        Label sub = dialogSub("Unique No: " + p.getTxnNumber());
+        VBox body = new VBox(10,
+                labeledField("Date", new Label(p.getTxnDate() != null ? UiUtil.date(p.getTxnDate()) : "—")),
+                labeledField("Paid to", new Label(p.getPaidTo() != null ? p.getPaidTo() : "—")),
+                labeledField("Amount", new Label(UiUtil.money(p.getAmount()))),
+                labeledField("Notes", new Label(p.getNotes() != null && !p.getNotes().isBlank() ? p.getNotes() : "—")));
+        Button closeBtn = new Button("Close");
+        closeBtn.getStyleClass().addAll("btn", "btn-secondary");
+        closeBtn.setOnAction(e -> stage.close());
+        content.getChildren().addAll(new VBox(4, title, sub), new Separator(), body);
+        presentDialog(stage, content, buttonRow(closeBtn));
+    }
+
+    // --- New Sale Transaction dialog (Receivables) --------------------------------
 
     public static void showNewSaleTransaction(Consumer<SaleTransaction> onSaved) {
         Stage stage = buildDialogStage("New Transaction", 900, 1100);
@@ -421,13 +598,28 @@ public final class Dialogs {
         datePicker.setMaxWidth(Double.MAX_VALUE);
 
         TextField billNoField = styledField("ST-26/27-070");
-        billNoField.setText(AppServices.invoiceNumbers().peekNextInvoiceNumber(LocalDate.now()));
+        try {
+            billNoField.setText(AppServices.invoiceNumbers().peekNextInvoiceNumber(LocalDate.now()));
+        } catch (Exception ex) {
+            billNoField.setText("");
+        }
         datePicker.valueProperty().addListener((o, a, b) -> {
             LocalDate d = b != null ? b : LocalDate.now();
-            billNoField.setText(AppServices.invoiceNumbers().peekNextInvoiceNumber(d));
+            try {
+                billNoField.setText(AppServices.invoiceNumbers().peekNextInvoiceNumber(d));
+            } catch (Exception ignored) {}
         });
 
-        List<InventoryItem> inventoryItems = AppServices.inventory().getAll();
+        final List<InventoryItem> inventoryItems;
+        {
+            List<InventoryItem> loaded;
+            try {
+                loaded = AppServices.inventory().getAll();
+            } catch (Exception ex) {
+                loaded = List.of();
+            }
+            inventoryItems = loaded;
+        }
 
         TextField phonePeField    = styledField("0.00");
         TextField acTransferField = styledField("0.00");
@@ -586,7 +778,7 @@ public final class Dialogs {
             Runnable applyItem = () -> {
                 if (r.selected == null) return;
                 r.productField.setText(r.selected.getName());
-                r.unitPriceField.setText(String.format("%.2f", r.selected.getUnitPrice()));
+                r.unitPriceField.setText(String.format("%.2f", r.selected.getSellingPrice()));
                 r.brandField.setText(r.selected.getBrand() != null ? r.selected.getBrand() : "");
                 r.hsnField.setText(r.selected.getHsnSac() != null ? r.selected.getHsnSac() : "");
                 if (r.selected.getItemType() != null) {
@@ -650,7 +842,7 @@ public final class Dialogs {
             leftCol.setMaxWidth(Double.MAX_VALUE);
 
             VBox rightCol = new VBox(10,
-                    labeledField("Unit price incl. tax (\u20b9)", r.unitPriceField),
+                    labeledField("Billing / selling price incl. tax (\u20b9)", r.unitPriceField),
                     labeledField("Rate (excl.)", r.rateLbl),
                     labeledField("CGST 9%", r.cgstLbl),
                     labeledField("SGST 9%", r.sgstLbl),
@@ -805,7 +997,7 @@ public final class Dialogs {
                 if (r.selected != null) {
                     invId = r.selected.getId();
                     name = r.selected.getName();
-                    if (unit <= 0) unit = r.selected.getUnitPrice();
+                    if (unit <= 0) unit = r.selected.getSellingPrice();
                     InventoryItem fresh = AppServices.inventory().getById(invId).orElse(r.selected);
                     if (qty > fresh.getQuantity()) {
                         err.setText("Out of stock: \"" + name + "\" has only "
@@ -908,6 +1100,12 @@ public final class Dialogs {
         VBox content = contentVBox();
         Label title = dialogTitle("Transaction Details");
 
+        double netProfit = t.getNetProfit();
+        try {
+            var items = AppServices.saleTransactions().getItems(t.getId());
+            netProfit = new com.sevatyres.service.ProfitService().calculateNetProfit(t, items);
+        } catch (Exception ignored) {}
+
         VBox form = new VBox(10,
                 labeledField("Date",          readonlyField(UiUtil.date(t.getSaleDate()))),
                 labeledField("Bill No",        readonlyField(t.getBillNo() != null ? t.getBillNo() : "\u2014")),
@@ -927,7 +1125,7 @@ public final class Dialogs {
                 labeledField("Round Off",      readonlyField(UiUtil.money(t.getRoundOff()))),
                 labeledField("Credit",         readonlyField(UiUtil.money(t.getCreditAmount()))),
                 labeledField("Total",          readonlyField(UiUtil.money(t.getTotal()))),
-                labeledField("Net Profit",     readonlyField(UiUtil.money(t.getNetProfit()))));
+                labeledField("Net Profit",     readonlyField(UiUtil.money(netProfit))));
 
         if (t.getCustomerName() != null) {
             form.getChildren().add(new Separator());
@@ -1121,7 +1319,7 @@ public final class Dialogs {
         Stage stage = buildDialogStage("Generate Transaction Report");
         VBox content = contentVBox();
         Label title = dialogTitle("Generate Report");
-        Label sub   = dialogSub("Choose a date range and output format.");
+        Label sub = dialogSub("Choose which transactions to include, date range, and PDF or Excel.");
 
         DatePicker fromDate = new DatePicker(LocalDate.now().minusMonths(1));
         fromDate.getStyleClass().add("date-picker");
@@ -1131,22 +1329,31 @@ public final class Dialogs {
         toDate.getStyleClass().add("date-picker");
         toDate.setMaxWidth(Double.MAX_VALUE);
 
+        ToggleGroup scopeGroup = new ToggleGroup();
+        RadioButton allRadio = new RadioButton("All (Receivables + Payables)");
+        RadioButton recvRadio = new RadioButton("Receivables only");
+        RadioButton payRadio = new RadioButton("Payables only");
+        allRadio.setToggleGroup(scopeGroup);
+        recvRadio.setToggleGroup(scopeGroup);
+        payRadio.setToggleGroup(scopeGroup);
+        allRadio.setSelected(true);
+        VBox scopeBox = new VBox(8, allRadio, recvRadio, payRadio);
+
         ToggleGroup formatGroup = new ToggleGroup();
-        RadioButton pdfRadio   = new RadioButton("PDF");
+        RadioButton pdfRadio = new RadioButton("PDF");
         RadioButton excelRadio = new RadioButton("Excel");
         pdfRadio.setToggleGroup(formatGroup);
         excelRadio.setToggleGroup(formatGroup);
         pdfRadio.setSelected(true);
-
-        CheckBox allTimeCheck = new CheckBox("Show all transactions (ignore date range)");
-
         HBox formatRow = new HBox(20, pdfRadio, excelRadio);
         formatRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label err = errLabel();
+        CheckBox allTimeCheck = new CheckBox("All dates (ignore date range)");
 
+        Label err = errLabel();
         content.getChildren().addAll(
                 new VBox(4, title, sub), new Separator(),
+                labeledField("Include", scopeBox),
                 labeledField("From Date", fromDate),
                 labeledField("To Date", toDate),
                 allTimeCheck,
@@ -1160,13 +1367,30 @@ public final class Dialogs {
 
         cancelBtn.setOnAction(e -> stage.close());
         generateBtn.setOnAction(e -> {
-            var txns = allTimeCheck.isSelected()
-                    ? saleService.getAll()
-                    : saleService.getByDateRange(fromDate.getValue(), toDate.getValue());
-
+            String scope = payRadio.isSelected() ? "PAYABLES"
+                    : recvRadio.isSelected() ? "RECEIVABLES" : "ALL";
             boolean isPdf = pdfRadio.isSelected();
             try {
-                var gf = FileGenerationService.generateSaleReport(txns, isPdf ? "PDF" : "Excel");
+                List<SaleTransaction> sales = List.of();
+                List<PayableTransaction> pays = List.of();
+                if (!payRadio.isSelected()) {
+                    sales = allTimeCheck.isSelected()
+                            ? saleService.getAll()
+                            : saleService.getByDateRange(fromDate.getValue(), toDate.getValue());
+                }
+                if (!recvRadio.isSelected()) {
+                    pays = allTimeCheck.isSelected()
+                            ? AppServices.payables().getAll()
+                            : AppServices.payables().getByDateRange(fromDate.getValue(), toDate.getValue());
+                }
+                String rangeLabel = allTimeCheck.isSelected()
+                        ? "All dates"
+                        : (fromDate.getValue() != null ? fromDate.getValue().toString() : "?")
+                        + " to "
+                        + (toDate.getValue() != null ? toDate.getValue().toString() : "?");
+
+                var gf = FileGenerationService.generateLedgerReport(
+                        sales, pays, scope, rangeLabel, isPdf ? "PDF" : "Excel");
                 AppServices.reports().saveFile(gf);
                 stage.close();
                 showFileDownloadedDialog(gf.getFile());
@@ -1186,8 +1410,8 @@ public final class Dialogs {
         Stage stage = buildDialogStage("Profit / Loss Report");
         VBox content = contentVBox();
         Label title = dialogTitle("Profit / Loss Report");
-        Label sub = dialogSub("Net profit per transaction (sell excl. 18% GST − buying price) × qty, "
-                + "minus discount excl. tax, plus bill round-off. Export as PDF or Excel.");
+        Label sub = dialogSub("Profit = total billing − buying cost − taxes − discount (+ round-off). "
+                + "Export as PDF or Excel.");
 
         DatePicker fromDate = new DatePicker(LocalDate.now().minusMonths(1));
         fromDate.getStyleClass().add("date-picker");
@@ -1271,6 +1495,7 @@ public final class Dialogs {
         TextField qtyField = styledField("0");
         TextField priceField = styledField("0.00");
         TextField mrpField = styledField("0.00");
+        TextField billingField = styledField("0.00");
         TextField barcodeField = styledField("Barcode (scan or type)");
 
         TextField rimField = styledField("e.g. 14");
@@ -1315,6 +1540,8 @@ public final class Dialogs {
         });
 
         Label priceLbl = new Label("Unit Price / RCP incl. tax (\u20b9)");
+        Label billingHint = new Label("Used as the selling price on bills, profit, and invoices. Enter manually.");
+        billingHint.setStyle("-fx-font-size:11px; -fx-text-fill: -neutral-400;");
         VBox tyreBox = new VBox(10,
                 labeledField("Rim", rimField),
                 labeledField("Size", sizeField),
@@ -1341,6 +1568,7 @@ public final class Dialogs {
             qtyField.setText(String.valueOf(existing.getQuantity()));
             priceField.setText(String.format("%.2f", existing.getUnitPrice()));
             mrpField.setText(String.format("%.2f", existing.getMrp()));
+            billingField.setText(String.format("%.2f", existing.getBillingAmount()));
             if (existing.getBarcode() != null) barcodeField.setText(existing.getBarcode());
             if (existing.getRimSize() != null) rimField.setText(existing.getRimSize());
             if (existing.getTyreSize() != null) sizeField.setText(existing.getTyreSize());
@@ -1372,6 +1600,7 @@ public final class Dialogs {
                 labeledField("Quantity", qtyField),
                 new VBox(4, priceLbl, priceField),
                 tyreBox,
+                new VBox(4, labeledField("Billing Amount (selling price) \u20b9", billingField), billingHint),
                 labeledField("Purchase Info (buying cost)", purchaseCombo),
                 new VBox(4, labeledField("Barcode", barcodeField), barcodeHint));
 
@@ -1400,6 +1629,14 @@ public final class Dialogs {
                     if (mrp < 0) throw new NumberFormatException();
                 }
             } catch (NumberFormatException ex) { err.setText("MRP must be a non-negative number."); return; }
+            double billing = 0;
+            try {
+                String billingText = billingField.getText().trim();
+                if (!billingText.isEmpty()) {
+                    billing = Double.parseDouble(billingText);
+                    if (billing < 0) throw new NumberFormatException();
+                }
+            } catch (NumberFormatException ex) { err.setText("Billing amount must be a non-negative number."); return; }
 
             boolean tyre = "Tyre".equals(typeCombo.getValue());
             if (tyre && rimField.getText().trim().isEmpty()) {
@@ -1414,6 +1651,7 @@ public final class Dialogs {
             item.setQuantity(qty);
             item.setUnitPrice(price);
             item.setMrp(mrp);
+            item.setBillingAmount(billing);
             String bc = barcodeField.getText().trim();
             item.setBarcode(bc.isEmpty() ? null : bc);
             String typeUi = typeCombo.getValue() != null ? typeCombo.getValue() : "Product";
@@ -1591,7 +1829,7 @@ public final class Dialogs {
             p.setNotes(notesField.getText().trim());
             try {
                 PurchaseInfo saved = AppServices.purchases().save(p);
-                // Keep inventory sell/MRP in sync when linked
+                // Keep inventory RCP/MRP in sync when linked (billing amount stays manual)
                 if (linked != null) {
                     if (saved.getRcp() > 0) linked.setUnitPrice(saved.getRcp());
                     if (saved.getMrp() > 0) linked.setMrp(saved.getMrp());
@@ -1849,20 +2087,30 @@ public static void showViewTransaction(Transaction t) {
 
     private static void presentDialog(Stage stage, VBox contentVBox, HBox buttonRow, double contentWidth) {
         contentVBox.setPrefWidth(contentWidth);
+        contentVBox.setMinWidth(contentWidth);
         ScrollPane scroll = new ScrollPane(contentVBox);
         scroll.setFitToWidth(true);
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        scroll.setMaxHeight(640);
-        scroll.getStyleClass().add("scroll-pane");
+        scroll.setPrefViewportHeight(Math.min(640, contentWidth > 800 ? 700 : 520));
+        scroll.getStyleClass().addAll("scroll-pane", "dialog-scroll");
+        VBox.setVgrow(scroll, Priority.ALWAYS);
         VBox outer = new VBox(scroll, buttonRow);
-        outer.getStyleClass().add("dialog-root");
+        outer.getStyleClass().addAll("dialog-root", "shell-root");
+        outer.setFillWidth(true);
         Scene scene = new Scene(outer);
         ThemeManager.register(scene);
         ThemeManager.apply(scene);
         stage.setOnHidden(e -> ThemeManager.unregister(scene));
         stage.setScene(scene);
+        // Prefer explicit width — sizeToScene() often collapses nested modal dialogs.
+        double w = Math.max(stage.getMinWidth(), contentWidth + 24);
+        if (stage.getMaxWidth() > 0) w = Math.min(w, stage.getMaxWidth());
+        stage.setWidth(w);
+        stage.setMinHeight(280);
         stage.sizeToScene();
+        if (stage.getWidth() < w) stage.setWidth(w);
+        stage.centerOnScreen();
         stage.showAndWait();
     }
 

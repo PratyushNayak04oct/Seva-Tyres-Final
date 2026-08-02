@@ -48,6 +48,35 @@
 /* Dark-specific table row override */
 .table-view .table-row-cell:odd { -fx-background-color: #0f1a2e; }
 
+/* Transaction type chips + row tints (dark) */
+.chip-receivable { -fx-background-color: #064e3b; -fx-text-fill: #34d399; }
+.chip-payable    { -fx-background-color: #78350f; -fx-text-fill: #fbbf24; }
+
+.table-view .table-row-cell.txn-row-receivable {
+    -fx-background-color: #0b2e24;
+}
+.table-view .table-row-cell.txn-row-receivable:odd {
+    -fx-background-color: #0f3d30;
+}
+.table-view .table-row-cell.txn-row-receivable:hover,
+.table-view .table-row-cell.txn-row-receivable:selected {
+    -fx-background-color: #14532d;
+}
+.table-view .table-row-cell.txn-row-payable {
+    -fx-background-color: #2a1c08;
+}
+.table-view .table-row-cell.txn-row-payable:odd {
+    -fx-background-color: #3b2509;
+}
+.table-view .table-row-cell.txn-row-payable:hover,
+.table-view .table-row-cell.txn-row-payable:selected {
+    -fx-background-color: #4a2c0a;
+}
+
+.profit-positive { -fx-font-weight: 700; -fx-text-fill: #34d399; }
+.profit-negative { -fx-font-weight: 700; -fx-text-fill: #f87171; }
+.profit-zero     { -fx-font-weight: 700; -fx-text-fill: #e2e8f0; }
+
 /* Dark mode dialog button tweak */
 .dialog-pane .button {
     -fx-background-color: -surface-2;

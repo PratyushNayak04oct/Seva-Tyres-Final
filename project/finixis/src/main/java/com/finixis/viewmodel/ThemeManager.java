@@ -74,7 +74,8 @@ public final class ThemeManager {
         new ArrayList<>(scenes).forEach(ThemeManager::apply);
     }
 
-    /** @deprecated Use apply(scene) instead — theme requires two stylesheets in dark mode. */
+    /** @deprecated Use {@link #apply(javafx.scene.Scene)} instead — theme requires two stylesheets in dark mode. */
+    @Deprecated
     public static String getThemeUrl() {
         return ThemeManager.class.getResource("/css/light-theme.css").toExternalForm();
     }

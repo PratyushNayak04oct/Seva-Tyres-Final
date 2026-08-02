@@ -7,11 +7,13 @@ module com.sevatyres {
     requires org.kordamp.ikonli.javafx;
     requires org.kordamp.ikonli.fontawesome5;
     requires java.desktop;
+    requires jdk.httpserver;
 
     // Database stack
     requires com.zaxxer.hikari;
     requires java.sql;
     requires com.h2database;
+    requires org.postgresql.jdbc;
 
     // SLF4J (required by HikariCP)
     requires org.slf4j;

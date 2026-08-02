@@ -1,0 +1,36 @@
+item_name,brand,rim,size,pattern,type,product_code,buying_price,rcp,mrp,notes,qty
+145 80 R12 Roadhawk 2z,Firestone,12,145 80 R12,Roadhawk 2z,TL,PSR0D82F,,3100,3388,Firestone Price List 29-Jun-2026,0
+145 70 R13 Roadhawk 2z,Firestone,13,145 70 R13,Roadhawk 2z,TL,PSR0D81F,,3200,3581,Firestone Price List 29-Jun-2026,0
+145 80 R13 Roadhawk 2z,Firestone,13,145 80 R13,Roadhawk 2z,TL,PSR0D83F,,3350,3664,Firestone Price List 29-Jun-2026,0
+155 65 R13 Roadhawk 2z,Firestone,13,155 65 R13,Roadhawk 2z,TL,PSR0D84F,,3550,3840,Firestone Price List 29-Jun-2026,0
+155 70 R13 Roadhawk 2z,Firestone,13,155 70 R13,Roadhawk 2z,TL,PSR0D86F,,3600,3900,Firestone Price List 29-Jun-2026,0
+155 80 R13 Roadhawk 2z,Firestone,13,155 80 R13,Roadhawk 2z,TL,PSR0D87F,,3800,4039,Firestone Price List 29-Jun-2026,0
+165 65 R13 Roadhawk 2z,Firestone,13,165 65 R13,Roadhawk 2z,TL,PSR0D88F,,3700,4060,Firestone Price List 29-Jun-2026,0
+155 65 R14 Roadhawk 2z,Firestone,14,155 65 R14,Roadhawk 2z,TL,PSR0D85F,,3550,3962,Firestone Price List 29-Jun-2026,0
+165 65 R14 Roadhawk 2z,Firestone,14,165 65 R14,Roadhawk 2z,TL,PSR0D89F,,4000,4211,Firestone Price List 29-Jun-2026,0
+165 70 R14 Roadhawk 2z,Firestone,14,165 70 R14,Roadhawk 2z,TL,PSR0D90F,,3600,3969,Firestone Price List 29-Jun-2026,0
+165 80 R14 Roadhawk 2z,Firestone,14,165 80 R14,Roadhawk 2z,TL,PSR0D91F,,3900,4232,Firestone Price List 29-Jun-2026,0
+175 65 R14 Roadhawk 2z,Firestone,14,175 65 R14,Roadhawk 2z,TL,PSR0D92F,,4950,5301,Firestone Price List 29-Jun-2026,0
+175 70 R14 Roadhawk 2z,Firestone,14,175 70 R14,Roadhawk 2z,TL,PSR0D94F,,4950,5356,Firestone Price List 29-Jun-2026,0
+185 65 R14 Roadhawk 2z,Firestone,14,185 65 R14,Roadhawk 2z,TL,PSR0D96F,,4800,5162,Firestone Price List 29-Jun-2026,0
+185 70 R14 Roadhawk 2z,Firestone,14,185 70 R14,Roadhawk 2z,TL,PSR0D98F,,4750,4978,Firestone Price List 29-Jun-2026,0
+175 65 R15 Roadhawk 2z,Firestone,15,175 65 R15,Roadhawk 2z,TL,PSR0D93F,,5050,5379,Firestone Price List 29-Jun-2026,0
+185 60 R15 Roadhawk 2z,Firestone,15,185 60 R15,Roadhawk 2z,TL,PSR0D95F,,5200,5524,Firestone Price List 29-Jun-2026,0
+185 65 R15 Roadhawk 2z,Firestone,15,185 65 R15,Roadhawk 2z,TL,PSR0D97F,,5250,5586,Firestone Price List 29-Jun-2026,0
+195 60 R15 Roadhawk 2z,Firestone,15,195 60 R15,Roadhawk 2z,TL,PSR0DA0F,,5900,6404,Firestone Price List 29-Jun-2026,0
+195 65 R15 Roadhawk 2z,Firestone,15,195 65 R15,Roadhawk 2z,TL,PSR0DA2F,,5750,6216,Firestone Price List 29-Jun-2026,0
+205 65 R15 Roadhawk 2z,Firestone,15,205 65 R15,Roadhawk 2z,TL,PSR0DA3F,,6350,6824,Firestone Price List 29-Jun-2026,0
+215 75 R15 Destination LE02,Firestone,15,215 75 R15,Destination LE02,TL,PSR0D01F,,6400,6930,Firestone Price List 29-Jun-2026,0
+195 55 R16 Roadhawk 2z,Firestone,16,195 55 R16,Roadhawk 2z,TL,PSR0D99F,,6900,7233,Firestone Price List 29-Jun-2026,0
+195 60 R16 Roadhawk 2z,Firestone,16,195 60 R16,Roadhawk 2z,TL,PSR0DA1F,,6600,6955,Firestone Price List 29-Jun-2026,0
+205 60 R16 Roadhawk 2z,Firestone,16,205 60 R16,Roadhawk 2z,TL,PSR0DA4F,,6600,6885,Firestone Price List 29-Jun-2026,0
+205 65 R16 Roadhawk 2z,Firestone,16,205 65 R16,Roadhawk 2z,TL,PSR0DA5F,,6400,6824,Firestone Price List 29-Jun-2026,0
+215 60 R16 Roadhawk 2z,Firestone,16,215 60 R16,Roadhawk 2z,TL,PSR0DA6F,,6950,7474,Firestone Price List 29-Jun-2026,0
+215 65 R16 Destination LE02 (PSR0D53F),Firestone,16,215 65 R16,Destination LE02,TL,PSR0D53F,,8650,9303,Firestone Price List 29-Jun-2026; PDF listed PSR0D53F/54F/78F,0
+215 65 R16 Destination LE02 (PSR0D54F),Firestone,16,215 65 R16,Destination LE02,TL,PSR0D54F,,8650,9303,Firestone Price List 29-Jun-2026; PDF listed PSR0D53F/54F/78F,0
+215 65 R16 Destination LE02 (PSR0D78F),Firestone,16,215 65 R16,Destination LE02,TL,PSR0D78F,,8650,9303,Firestone Price List 29-Jun-2026; PDF listed PSR0D53F/54F/78F,0
+235 70 R16 Destination LE02,Firestone,16,235 70 R16,Destination LE02,TL,PSR0D52F,,8100,8673,Firestone Price List 29-Jun-2026,0
+225 60 R17 Destination LE02 (PSR0D55F),Firestone,17,225 60 R17,Destination LE02,TL,PSR0D55F,,9750,10493,Firestone Price List 29-Jun-2026; PDF listed PSR0D55F/77F/80F/79F,0
+225 60 R17 Destination LE02 (PSR0D77F),Firestone,17,225 60 R17,Destination LE02,TL,PSR0D77F,,9750,10493,Firestone Price List 29-Jun-2026; PDF listed PSR0D55F/77F/80F/79F,0
+225 60 R17 Destination LE02 (PSR0D80F),Firestone,17,225 60 R17,Destination LE02,TL,PSR0D80F,,9750,10493,Firestone Price List 29-Jun-2026; PDF listed PSR0D55F/77F/80F/79F,0
+225 60 R17 Destination LE02 (PSR0D79F),Firestone,17,225 60 R17,Destination LE02,TL,PSR0D79F,,9750,10493,Firestone Price List 29-Jun-2026; PDF listed PSR0D55F/77F/80F/79F,0

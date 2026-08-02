@@ -38,6 +38,7 @@
             <TableColumn fx:id="qtyCol" text="Qty" prefWidth="55"/>
             <TableColumn fx:id="priceCol" text="RCP / Price" prefWidth="100"/>
             <TableColumn fx:id="mrpCol" text="MRP" prefWidth="90"/>
+            <TableColumn fx:id="billingCol" text="Billing Amount" prefWidth="120"/>
             <TableColumn fx:id="stockCol" text="Status" prefWidth="100"/>
             <TableColumn fx:id="actionCol" text="Actions" minWidth="200" prefWidth="220" sortable="false"/>
         </columns>

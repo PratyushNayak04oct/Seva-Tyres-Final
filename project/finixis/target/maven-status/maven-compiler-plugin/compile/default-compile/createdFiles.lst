@@ -19,12 +19,14 @@ com\sevatyres\controller\AccountsController$2.class
 com\sevatyres\controller\AccountController.class
 com\sevatyres\controller\InventoryController$4.class
 com\sevatyres\service\TransactionService.class
+com\sevatyres\repository\impl\JdbcPayableTransactionRepository.class
 com\sevatyres\controller\Dialogs$3.class
 com\finixis\controller\AccountController.class
 com\sevatyres\repository\impl\JdbcReportRepository.class
 com\sevatyres\model\Credit.class
 com\sevatyres\controller\AccountsController$3.class
 module-info.class
+com\sevatyres\controller\TransactionsController$7.class
 com\sevatyres\repository\SaleTransactionRepository.class
 com\finixis\model\Role.class
 com\finixis\repository\impl\JdbcCustomerRepository.class
@@ -32,6 +34,7 @@ com\sevatyres\controller\Dialogs$9.class
 com\sevatyres\repository\impl\JdbcTaxRepository.class
 com\finixis\controller\CreditController$3.class
 com\sevatyres\controller\CustomerDetailController.class
+com\sevatyres\controller\TransactionsController$6.class
 com\sevatyres\repository\impl\JdbcPurchaseInfoRepository.class
 com\finixis\model\Customer.class
 com\finixis\controller\AccountsController$3.class
@@ -43,11 +46,13 @@ com\sevatyres\db\DatabaseConfig.class
 com\finixis\controller\PageController.class
 com\sevatyres\util\GstUtil$Totals.class
 com\sevatyres\controller\Dialogs$13.class
+com\sevatyres\controller\TransactionsController$5.class
 com\sevatyres\controller\UsersController$4.class
 com\sevatyres\service\CustomerService.class
 com\finixis\controller\InventoryController.class
 com\sevatyres\controller\Dialogs$16.class
 com\sevatyres\controller\TransactionsController$2.class
+com\sevatyres\model\TxnListEntry.class
 com\sevatyres\repository\ReportRepository.class
 com\sevatyres\repository\impl\JdbcCompanyRepository.class
 com\finixis\service\CustomerService.class
@@ -56,8 +61,10 @@ com\sevatyres\controller\Dialogs$2.class
 com\finixis\model\Invoice.class
 com\finixis\repository\InventoryRepository.class
 com\sevatyres\controller\PurchaseController$1.class
+com\sevatyres\repository\PayableTransactionRepository.class
 com\finixis\controller\ReportsController.class
 com\finixis\service\ReportService.class
+com\sevatyres\model\TxnListEntry$Type.class
 com\finixis\App.class
 com\sevatyres\service\PurchaseInfoService.class
 com\sevatyres\viewmodel\Permissions.class
@@ -77,6 +84,7 @@ com\finixis\service\InventoryService.class
 com\sevatyres\controller\Dialogs$15.class
 com\sevatyres\controller\TransactionsController$3.class
 com\sevatyres\controller\CreditController$3.class
+com\sevatyres\model\PayableTransaction.class
 com\sevatyres\controller\UsersController.class
 com\sevatyres\controller\UsersController$2.class
 com\sevatyres\repository\PurchaseInfoRepository.class
@@ -111,6 +119,7 @@ com\sevatyres\controller\CreditController$4.class
 com\sevatyres\controller\InventoryController$1.class
 com\finixis\controller\AccountsController$1.class
 com\sevatyres\model\TransactionLineItem.class
+com\sevatyres\view\SplashScreen.class
 com\sevatyres\model\SaleTaxLine.class
 com\finixis\controller\InventoryController$3.class
 com\finixis\model\User.class
@@ -134,6 +143,7 @@ com\sevatyres\model\Invoice.class
 com\sevatyres\controller\AlertsController$RecipientEntry.class
 com\sevatyres\controller\Dialogs$12.class
 com\sevatyres\model\InventoryItem$StockStatus.class
+com\sevatyres\service\PayableTransactionService.class
 com\finixis\controller\UsersController$4.class
 com\finixis\repository\impl\JdbcInventoryRepository.class
 com\sevatyres\service\EmailService$2.class

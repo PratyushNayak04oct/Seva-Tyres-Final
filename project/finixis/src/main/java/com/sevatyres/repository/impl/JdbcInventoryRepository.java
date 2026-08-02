@@ -14,7 +14,7 @@ public class JdbcInventoryRepository implements InventoryRepository {
     private static final int REORDER_LEVEL = 10;
     private static final String SELECT_ALL =
             "SELECT item_id,item_name,brand,available_quantity,unit_price,barcode,hsn_sac,item_type,"
-                    + "rim_size,tyre_size,pattern,tyre_kind,product_code,mrp,purchase_id FROM Inventory";
+                    + "rim_size,tyre_size,pattern,tyre_kind,product_code,mrp,billing_amount,purchase_id FROM Inventory";
 
     @Override
     public List<InventoryItem> findAll() {
@@ -94,8 +94,8 @@ public class JdbcInventoryRepository implements InventoryRepository {
 
     private InventoryItem insert(InventoryItem item) {
         String sql = "INSERT INTO Inventory(item_name,brand,available_quantity,unit_price,barcode,hsn_sac,item_type,"
-                + "rim_size,tyre_size,pattern,tyre_kind,product_code,mrp,purchase_id) "
-                + "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                + "rim_size,tyre_size,pattern,tyre_kind,product_code,mrp,billing_amount,purchase_id) "
+                + "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         try (Connection con = DatabaseConfig.get();
              PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             bind(ps, item);
@@ -109,12 +109,12 @@ public class JdbcInventoryRepository implements InventoryRepository {
 
     private void update(InventoryItem item) {
         String sql = "UPDATE Inventory SET item_name=?,brand=?,available_quantity=?,unit_price=?,barcode=?,hsn_sac=?,"
-                + "item_type=?,rim_size=?,tyre_size=?,pattern=?,tyre_kind=?,product_code=?,mrp=?,purchase_id=? "
+                + "item_type=?,rim_size=?,tyre_size=?,pattern=?,tyre_kind=?,product_code=?,mrp=?,billing_amount=?,purchase_id=? "
                 + "WHERE item_id=?";
         try (Connection con = DatabaseConfig.get();
              PreparedStatement ps = con.prepareStatement(sql)) {
             bind(ps, item);
-            ps.setInt(15, item.getId());
+            ps.setInt(16, item.getId());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw wrapUniqueName(e, item.getName());
@@ -135,8 +135,9 @@ public class JdbcInventoryRepository implements InventoryRepository {
         ps.setString(11, blankToNull(item.getTyreKind()));
         ps.setString(12, blankToNull(item.getProductCode()));
         ps.setDouble(13, item.getMrp());
-        if (item.getPurchaseId() != null) ps.setInt(14, item.getPurchaseId());
-        else ps.setNull(14, Types.INTEGER);
+        ps.setDouble(14, item.getBillingAmount());
+        if (item.getPurchaseId() != null) ps.setInt(15, item.getPurchaseId());
+        else ps.setNull(15, Types.INTEGER);
     }
 
     private static String blankToNull(String s) {
@@ -182,6 +183,7 @@ public class JdbcInventoryRepository implements InventoryRepository {
         try { i.setTyreKind(rs.getString("tyre_kind")); } catch (SQLException ignored) {}
         try { i.setProductCode(rs.getString("product_code")); } catch (SQLException ignored) {}
         try { i.setMrp(rs.getDouble("mrp")); } catch (SQLException ignored) {}
+        try { i.setBillingAmount(rs.getDouble("billing_amount")); } catch (SQLException ignored) {}
         try {
             int pid = rs.getInt("purchase_id");
             if (!rs.wasNull()) i.setPurchaseId(pid);

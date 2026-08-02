@@ -92,16 +92,17 @@ public class SaleTransactionService {
             GstUtil.Totals totals = GstUtil.totalsFromLines(
                     taxable, cgst, sgst, inclusive, discAmt);
 
+            tx.setDiscountPercent(discPct);
             tx.setDiscountAmount(totals.discount());
             tx.setSubtotal(totals.taxable());
             tx.setCgstTotal(totals.cgst());
             tx.setSgstTotal(totals.sgst());
             tx.setTaxAmount(GstUtil.round2(totals.cgst() + totals.sgst()));
             tx.setTaxLabel("CGST 9% + SGST 9%");
-            // Round-off column = signed amount used to reach nearest rupee
             tx.setRoundOff(totals.roundOff());
             tx.setTotal(totals.grandTotal());
             tx.setQuantity(Math.max(1, totalQty));
+            // Profit = total billing − buying cost − taxes − discount (+ round-off)
             tx.setNetProfit(profitService.calculateNetProfit(tx, items));
 
             double paid = tx.getPhonePe() + tx.getAccountTransfer() + tx.getCardSwipe()

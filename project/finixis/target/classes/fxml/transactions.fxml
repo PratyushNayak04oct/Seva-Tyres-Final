@@ -3,23 +3,16 @@
 <?import javafx.scene.layout.*?>
 <?import org.kordamp.ikonli.javafx.*?>
 
-<!--
-  Task 2: Completely redesigned Transactions page.
-  Shows SaleTransaction table with: Date, Bill No, Particulars, Brand,
-  Qty, Payment summary, Total, Customer, and Action buttons.
-  Only action button is "Generate Report" — no filters needed per requirements.
--->
 <ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.sevatyres.controller.TransactionsController"
             fitToWidth="true" fitToHeight="true" styleClass="scroll-pane" hbarPolicy="NEVER">
     <VBox styleClass="page" prefWidth="1100" spacing="18">
 
-        <!-- Page header + action buttons -->
         <HBox alignment="CENTER_LEFT" spacing="14">
             <FontIcon iconLiteral="fas-receipt" styleClass="page-title"/>
             <VBox>
                 <Label text="Transactions" styleClass="page-title"/>
-                <Label text="All sales transactions for Seva Tyres" styleClass="page-subtitle"/>
+                <Label text="Receivables (sales) and Payables (money paid out)" styleClass="page-subtitle"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
             <Button fx:id="addTaxBtn" text="Add New Tax" styleClass="btn,btn-secondary" onAction="#onAddTax">
@@ -36,35 +29,35 @@
             </Button>
         </HBox>
 
-        <!-- Current invoice number (editable, saved to DB sequence) -->
         <HBox spacing="12" alignment="CENTER_LEFT" styleClass="card">
             <Label text="Current bill number" style="-fx-font-weight:700;"/>
             <TextField fx:id="currentBillField" promptText="ST-26/27-069" prefWidth="180" styleClass="field"/>
             <Button fx:id="updateBillBtn" text="Update" styleClass="btn,btn-secondary" onAction="#onUpdateBillNumber"/>
             <Label fx:id="nextBillHint" style="-fx-text-fill: -text-muted; -fx-font-size:12px;"/>
             <Region HBox.hgrow="ALWAYS"/>
+            <Label text="Receivable" styleClass="chip,chip-receivable"/>
+            <Label text="Payable" styleClass="chip,chip-payable"/>
         </HBox>
 
-        <!-- Search bar -->
         <HBox spacing="10" alignment="CENTER_LEFT">
-            <TextField fx:id="searchField" promptText="Search by bill no, particulars, customer…"
+            <TextField fx:id="searchField" promptText="Search bill no, payable no, name, notes…"
                        styleClass="search-box" onKeyReleased="#onSearch" HBox.hgrow="ALWAYS"/>
         </HBox>
 
-        <!-- Transactions TableView -->
         <TableView fx:id="table" styleClass="table-view" VBox.vgrow="ALWAYS">
             <placeholder><Label text="No transactions yet. Click 'New Transaction' to add one."/></placeholder>
             <columns>
+                <TableColumn fx:id="typeCol"         text="Type"         prefWidth="110"/>
                 <TableColumn fx:id="dateCol"         text="Date"         prefWidth="100"/>
-                <TableColumn fx:id="billNoCol"       text="Bill No"      prefWidth="80"/>
-                <TableColumn fx:id="particularsCol"  text="Particulars"  prefWidth="180"/>
-                <TableColumn fx:id="brandCol"        text="Brand"        prefWidth="110"/>
-                <TableColumn fx:id="qtyCol"          text="Qty"          prefWidth="60"  style="-fx-alignment:CENTER;"/>
-                <TableColumn fx:id="paymentCol"      text="Payment"      prefWidth="140"/>
-                <TableColumn fx:id="totalCol"        text="Total"        prefWidth="100" style="-fx-alignment:CENTER_RIGHT;"/>
-                <TableColumn fx:id="profitCol"       text="Net Profit"   prefWidth="110" style="-fx-alignment:CENTER_RIGHT;"/>
-                <TableColumn fx:id="customerCol"     text="Customer"     prefWidth="120"/>
-                <TableColumn fx:id="actionCol"       text="Actions"      prefWidth="400" minWidth="400" sortable="false" style="-fx-alignment:CENTER;"/>
+                <TableColumn fx:id="numberCol"       text="Number"       prefWidth="110"/>
+                <TableColumn fx:id="partyCol"        text="Party"        prefWidth="140"/>
+                <TableColumn fx:id="detailsCol"      text="Details"      prefWidth="160"/>
+                <TableColumn fx:id="brandCol"        text="Brand"        prefWidth="90"/>
+                <TableColumn fx:id="qtyCol"          text="Qty"          prefWidth="50"/>
+                <TableColumn fx:id="paymentCol"      text="Payment"      prefWidth="120"/>
+                <TableColumn fx:id="amountCol"       text="Amount"       prefWidth="100"/>
+                <TableColumn fx:id="profitCol"       text="Net Profit"   prefWidth="100"/>
+                <TableColumn fx:id="actionCol"       text="Actions"      prefWidth="320" minWidth="280" sortable="false"/>
             </columns>
         </TableView>
 

@@ -27,7 +27,7 @@ public class InventoryController implements Initializable, PageController {
     @FXML private TableColumn<InventoryItem, String> nameCol, skuCol, typeCol, rimCol, sizeCol,
             patternCol, kindCol, codeCol, hsnCol;
     @FXML private TableColumn<InventoryItem, Number> qtyCol;
-    @FXML private TableColumn<InventoryItem, Double> priceCol, mrpCol;
+    @FXML private TableColumn<InventoryItem, Double> priceCol, mrpCol, billingCol;
     @FXML private TableColumn<InventoryItem, InventoryItem> stockCol, actionCol;
 
     private InventoryService inventoryService;
@@ -48,11 +48,13 @@ public class InventoryController implements Initializable, PageController {
         qtyCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
         priceCol.setCellValueFactory(new PropertyValueFactory<>("unitPrice"));
         mrpCol.setCellValueFactory(new PropertyValueFactory<>("mrp"));
+        billingCol.setCellValueFactory(new PropertyValueFactory<>("billingAmount"));
         stockCol.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue()));
         actionCol.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue()));
 
         priceCol.setCellFactory(col -> moneyCell());
         mrpCol.setCellFactory(col -> moneyCell());
+        billingCol.setCellFactory(col -> moneyCell());
 
         stockCol.setCellFactory(col -> new TableCell<>() {
             @Override protected void updateItem(InventoryItem item, boolean empty) {

@@ -38,14 +38,14 @@
     -neutral-800: #1e293b;
     -neutral-900: #0f172a;
 
-    /* semantic tokens */
-    -bg:          -neutral-50;
-    -surface:     -neutral-0;
-    -surface-2:   -neutral-100;
-    -border:      -neutral-200;
-    -text:        -neutral-800;
-    -text-muted:  -neutral-500;
-    -text-on-primary: -neutral-0;
+    /* semantic tokens — use hex so dialogs/scenes resolve reliably */
+    -bg:          #f8fafc;
+    -surface:     #ffffff;
+    -surface-2:   #f1f5f9;
+    -border:      #e2e8f0;
+    -text:        #1e293b;
+    -text-muted:  #64748b;
+    -text-on-primary: #ffffff;
 }
 
 * { -fx-text-fill: -text; }
@@ -350,6 +350,34 @@
 .chip-warning { -fx-background-color: -warning-100; -fx-text-fill: -warning-600; }
 .chip-error   { -fx-background-color: -error-100;   -fx-text-fill: -error-600; }
 .chip-primary { -fx-background-color: -primary-50;  -fx-text-fill: -primary-600; }
+.chip-receivable { -fx-background-color: #d1fae5; -fx-text-fill: #059669; }
+.chip-payable    { -fx-background-color: #fef3c7; -fx-text-fill: #d97706; }
+
+/* Transactions table: soft type tint (solid colors — avoid derive(looked-up) parse issues) */
+.table-view .table-row-cell.txn-row-receivable {
+    -fx-background-color: #ecfdf5;
+}
+.table-view .table-row-cell.txn-row-receivable:odd {
+    -fx-background-color: #d1fae5;
+}
+.table-view .table-row-cell.txn-row-receivable:hover,
+.table-view .table-row-cell.txn-row-receivable:selected {
+    -fx-background-color: #a7f3d0;
+}
+.table-view .table-row-cell.txn-row-payable {
+    -fx-background-color: #fffbeb;
+}
+.table-view .table-row-cell.txn-row-payable:odd {
+    -fx-background-color: #fef3c7;
+}
+.table-view .table-row-cell.txn-row-payable:hover,
+.table-view .table-row-cell.txn-row-payable:selected {
+    -fx-background-color: #fde68a;
+}
+
+.profit-positive { -fx-font-weight: 700; -fx-text-fill: #059669; }
+.profit-negative { -fx-font-weight: 700; -fx-text-fill: #dc2626; }
+.profit-zero     { -fx-font-weight: 700; }
 
 .badge {
     -fx-background-color: -error-500;

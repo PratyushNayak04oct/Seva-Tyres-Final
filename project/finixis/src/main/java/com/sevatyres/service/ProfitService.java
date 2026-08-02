@@ -13,18 +13,23 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Net profit for a sale, always after discount and round-off:
- * <pre>
- *   net sell (excl. tax) = (inclusive sales − discount) ÷ 1.18
- *   buy cost             = Σ (buying price × qty)
- *   net profit           = net sell − buy cost + round-off
- * </pre>
+ * Profit = total billing − buying cost − taxes − discount (+ round-off)
+ *
+ * <ul>
+ *   <li>total billing = Σ (unit sell price incl. tax × qty) before discount</li>
+ *   <li>buying cost   = Σ (purchase buying price × qty)</li>
+ *   <li>taxes         = CGST + SGST</li>
+ *   <li>discount      = ₹ amount, or % of total billing if amount is empty</li>
+ *   <li>round-off     = invoice nearest-rupee adjustment</li>
+ * </ul>
  */
 public class ProfitService {
 
     private final JdbcPurchaseInfoRepository purchases = new JdbcPurchaseInfoRepository();
 
     public double calculateNetProfit(SaleTransaction tx, List<SaleTransactionItem> items) {
+        if (tx == null) return 0;
+
         Map<Integer, Double> buyByInv = new HashMap<>();
         Map<String, Double> buyByName = new HashMap<>();
         for (PurchaseInfo p : purchases.findAll()) {
@@ -34,41 +39,53 @@ public class ProfitService {
             }
         }
 
-        double inclusiveSales = 0;
-        double buyCost = 0;
+        double totalBilling = 0;
+        double buyingCost = 0;
+        double taxes = 0;
 
         if (items != null && !items.isEmpty()) {
             for (SaleTransactionItem it : items) {
                 int qty = Math.max(0, it.getQuantity());
-                double sellIncl = it.getLineTotal() > 0
-                        ? it.getLineTotal()
-                        : GstUtil.splitLine(it.getUnitPrice(), qty).inclusiveTotal();
-                inclusiveSales += sellIncl;
-                buyCost += resolveBuy(it.getInventoryId(), it.getItemName(), buyByInv, buyByName) * qty;
+                if (qty <= 0) continue;
+                GstUtil.LineGst split = GstUtil.splitLine(it.getUnitPrice(), qty);
+                totalBilling += split.inclusiveTotal();
+                taxes += split.cgst() + split.sgst();
+                buyingCost += resolveBuy(it.getInventoryId(), it.getItemName(), buyByInv, buyByName) * qty;
             }
         } else if (tx.getQuantity() > 0 && tx.getUnitPrice() > 0) {
-            inclusiveSales = GstUtil.round2(tx.getUnitPrice() * tx.getQuantity());
-            buyCost = resolveBuy(tx.getInventoryItemId(), tx.getParticulars(), buyByInv, buyByName)
-                    * tx.getQuantity();
+            int qty = tx.getQuantity();
+            GstUtil.LineGst split = GstUtil.splitLine(tx.getUnitPrice(), qty);
+            totalBilling = split.inclusiveTotal();
+            taxes = split.cgst() + split.sgst();
+            buyingCost = resolveBuy(tx.getInventoryItemId(), tx.getParticulars(), buyByInv, buyByName) * qty;
         } else {
             return 0;
         }
 
-        inclusiveSales = GstUtil.round2(inclusiveSales);
-        buyCost = GstUtil.round2(buyCost);
+        totalBilling = GstUtil.round2(totalBilling);
+        buyingCost = GstUtil.round2(buyingCost);
 
-        // Discount is tax-inclusive — always reduce revenue before stripping GST
-        double discountIncl = Math.max(0, tx.getDiscountAmount());
-        if (discountIncl <= 0.009 && tx.getDiscountPercent() > 0) {
-            discountIncl = GstUtil.round2(inclusiveSales * tx.getDiscountPercent() / 100.0);
+        // Prefer taxes stored on the invoice header when present
+        double headerTax = GstUtil.round2(
+                Math.max(0, tx.getCgstTotal()) + Math.max(0, tx.getSgstTotal()));
+        if (headerTax > 0.009) {
+            taxes = headerTax;
+        } else if (tx.getTaxAmount() > 0.009) {
+            taxes = GstUtil.round2(tx.getTaxAmount());
+        } else {
+            taxes = GstUtil.round2(taxes);
         }
-        discountIncl = Math.min(discountIncl, inclusiveSales);
 
-        double netInclusive = GstUtil.round2(inclusiveSales - discountIncl);
-        double netSellExclTax = GstUtil.taxableFromInclusive(netInclusive);
+        double discount = Math.max(0, tx.getDiscountAmount());
+        if (discount <= 0.009 && tx.getDiscountPercent() > 0) {
+            discount = GstUtil.round2(totalBilling * tx.getDiscountPercent() / 100.0);
+        }
+        discount = Math.min(discount, totalBilling);
+
         double roundOff = tx.getRoundOff();
 
-        return GstUtil.round2(netSellExclTax - buyCost + roundOff);
+        // Profit = total billing − buying cost − taxes − discount (+ round-off)
+        return GstUtil.round2(totalBilling - buyingCost - taxes - discount + roundOff);
     }
 
     private double resolveBuy(Integer inventoryId, String name,

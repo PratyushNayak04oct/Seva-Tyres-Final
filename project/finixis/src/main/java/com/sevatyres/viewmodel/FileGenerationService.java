@@ -4,9 +4,11 @@ import com.sevatyres.model.CompanyInfo;
 import com.sevatyres.model.GeneratedFile;
 import com.sevatyres.model.InventoryItem;
 import com.sevatyres.model.Invoice;
+import com.sevatyres.model.PayableTransaction;
 import com.sevatyres.model.SaleTransaction;
 import com.sevatyres.model.SaleTransactionItem;
 import com.sevatyres.model.Transaction;
+import com.sevatyres.model.TxnListEntry;
 import com.sevatyres.repository.impl.JdbcInventoryRepository;
 import com.sevatyres.repository.impl.JdbcSaleTransactionRepository;
 import com.sevatyres.service.AppServices;
@@ -46,39 +48,232 @@ public final class FileGenerationService {
 
     /** Generate a sale transaction report in PDF or Excel format (Task 2 / Generate Report). */
     public static GeneratedFile generateSaleReport(List<SaleTransaction> txns, String format) throws IOException {
-        String ts   = LocalDateTime.now().format(TS);
-        String name = "Seva Tyres Transaction Report – " + LocalDateTime.now().format(DISP);
-        File dir    = outputDir();
+        return generateLedgerReport(txns, List.of(), "RECEIVABLES", "All dates", format);
+    }
 
-        String[] headers = {"Date", "Bill No", "Particulars", "Brand", "Qty",
-                "PhonePe", "Cash", "Credit", "Total", "Net Profit", "Customer"};
+    /**
+     * Unified transaction report: Receivables, Payables, or All.
+     * @param scope ALL | RECEIVABLES | PAYABLES
+     */
+    public static GeneratedFile generateLedgerReport(List<SaleTransaction> sales,
+                                                     List<PayableTransaction> payables,
+                                                     String scope, String rangeLabel,
+                                                     String format) throws IOException {
+        String ts = LocalDateTime.now().format(TS);
+        String scopeLabel = switch (scope == null ? "ALL" : scope.toUpperCase(Locale.ROOT)) {
+            case "RECEIVABLES" -> "Receivables";
+            case "PAYABLES" -> "Payables";
+            default -> "All Transactions";
+        };
+        String name = "Seva Tyres " + scopeLabel + " Report - " + LocalDateTime.now().format(DISP);
+        File dir = outputDir();
+
+        List<TxnListEntry> entries = new ArrayList<>();
+        if (sales != null) {
+            for (SaleTransaction s : sales) entries.add(TxnListEntry.fromSale(s));
+        }
+        if (payables != null) {
+            for (PayableTransaction p : payables) entries.add(TxnListEntry.fromPayable(p));
+        }
+        entries.sort(Comparator
+                .comparing(TxnListEntry::getDate, Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(TxnListEntry::getNumber, Comparator.nullsLast(Comparator.reverseOrder())));
+
+        String[] headers = {"Type", "Date", "Number", "Party", "Details", "Brand",
+                "Qty", "Payment", "Amount", "Net Profit"};
         List<String[]> rows = new ArrayList<>();
-        for (SaleTransaction t : txns) {
+        double recvTotal = 0, payTotal = 0, profitTotal = 0;
+        int recvCount = 0, payCount = 0;
+        for (TxnListEntry e : entries) {
+            if (e.isPayable()) {
+                payTotal += e.getAmount();
+                payCount++;
+            } else {
+                recvTotal += e.getAmount();
+                recvCount++;
+                if (e.getNetProfit() != null) profitTotal += e.getNetProfit();
+            }
             rows.add(new String[]{
-                    t.getSaleDate() != null ? t.getSaleDate().format(DateTimeFormatter.ofPattern("MMM d, yyyy")) : "",
-                    t.getBillNo() != null ? t.getBillNo() : "",
-                    t.getParticulars() != null ? t.getParticulars() : "",
-                    t.getBrand() != null ? t.getBrand() : "",
-                    String.valueOf(t.getQuantity()),
-                    String.format("%.2f", t.getPhonePe()),
-                    String.format("%.2f", t.getCash()),
-                    String.format("%.2f", t.getCreditAmount()),
-                    String.format("%.2f", t.getTotal()),
-                    String.format("%.2f", t.getNetProfit()),
-                    t.getCustomerName() != null ? t.getCustomerName() : ""
+                    e.getTypeLabel(),
+                    e.getDate() != null ? e.getDate().format(DateTimeFormatter.ofPattern("dd-MMM-yyyy")) : "",
+                    asciiSafe(e.getNumber() != null ? e.getNumber() : ""),
+                    asciiSafe(e.getParty() != null ? e.getParty() : ""),
+                    asciiSafe(e.getDetails() != null ? e.getDetails() : ""),
+                    asciiSafe(e.getBrand() != null ? e.getBrand() : ""),
+                    e.getQuantity() != null ? String.valueOf(e.getQuantity()) : "",
+                    asciiSafe(e.getPayment() != null ? e.getPayment() : ""),
+                    String.format("%.2f", e.getAmount()),
+                    e.getNetProfit() != null ? String.format("%.2f", e.getNetProfit()) : ""
             });
         }
+        rows.add(new String[]{"", "", "", "TOTAL", "", "", "", "",
+                String.format("%.2f", recvTotal + payTotal),
+                String.format("%.2f", profitTotal)});
 
         LocalDateTime now = LocalDateTime.now();
         if ("PDF".equalsIgnoreCase(format)) {
-            File pdf = writePdf(name, "Generated: " + now.format(FULL), headers, rows,
-                    new File(dir, "SaleReport_" + ts + ".pdf"));
+            File pdf = writeLedgerPdf(name, scopeLabel, rangeLabel, rows,
+                    recvCount, payCount, recvTotal, payTotal, profitTotal,
+                    new File(dir, "TxnReport_" + ts + ".pdf"));
             return new GeneratedFile(++seq, name, "Report", "PDF", now, pdf);
-        } else {
-            File xlsx = writeExcel("Sale Transactions", headers, rows,
-                    new File(dir, "SaleReport_" + ts + ".xlsx"));
-            return new GeneratedFile(++seq, name, "Report", "Excel", now, xlsx);
         }
+        File xlsx = writeExcel("Transactions", headers, rows,
+                new File(dir, "TxnReport_" + ts + ".xlsx"));
+        return new GeneratedFile(++seq, name, "Report", "Excel", now, xlsx);
+    }
+
+    /** Professional landscape ledger PDF (WinAnsi-safe, word-wrapped columns). */
+    private static File writeLedgerPdf(String title, String scopeLabel, String rangeLabel,
+                                       List<String[]> rows, int recvCount, int payCount,
+                                       double recvTotal, double payTotal, double profitTotal,
+                                       File outFile) throws IOException {
+        final int pageW = 842, pageH = 595;
+        final int left = 28, right = pageW - 28;
+        final int tableW = right - left;
+        final float fontSize = 7.5f;
+        final int lineH = 10;
+        final int padY = 4;
+
+        // Type | Date | Number | Party | Details | Brand | Qty | Payment | Amount | Profit
+        final int[] colW = {72, 68, 78, 100, 140, 70, 32, 90, 70, tableW - (72+68+78+100+140+70+32+90+70)};
+        final int[] colX = new int[colW.length];
+        colX[0] = left;
+        for (int i = 1; i < colW.length; i++) colX[i] = colX[i - 1] + colW[i - 1];
+        String[] headers = {"Type", "Date", "Number", "Party", "Details", "Brand",
+                "Qty", "Payment", "Amount", "Profit"};
+        int[] maxChars = new int[colW.length];
+        for (int i = 0; i < colW.length; i++) {
+            maxChars[i] = Math.max(3, (int) ((colW[i] - 6) / (fontSize * 0.50)));
+        }
+
+        List<String[]> headerLines = new ArrayList<>();
+        int headerLineCount = 1;
+        for (int i = 0; i < headers.length; i++) {
+            String[] hl = wrapWords(headers[i], maxChars[i]);
+            headerLines.add(hl);
+            headerLineCount = Math.max(headerLineCount, hl.length);
+        }
+        int headerBlockH = headerLineCount * lineH + padY * 2;
+
+        List<List<String[]>> wrappedRows = new ArrayList<>();
+        List<Integer> rowHeights = new ArrayList<>();
+        for (String[] row : rows) {
+            List<String[]> cells = new ArrayList<>();
+            int maxLines = 1;
+            for (int i = 0; i < headers.length; i++) {
+                String cell = asciiSafe(i < row.length && row[i] != null ? row[i] : "");
+                String[] lines = wrapWords(cell, maxChars[i]);
+                cells.add(lines);
+                maxLines = Math.max(maxLines, lines.length);
+            }
+            wrappedRows.add(cells);
+            rowHeights.add(maxLines * lineH + padY * 2);
+        }
+
+        List<byte[]> pageContents = new ArrayList<>();
+        int rowIdx = 0;
+        int pageNo = 0;
+        while (rowIdx < wrappedRows.size() || pageNo == 0) {
+            pageNo++;
+            StringBuilder cs = new StringBuilder();
+            int yTop = pageH - 36;
+            if (pageNo == 1) {
+                cs.append("BT\n");
+                cs.append("/F1 14 Tf 1 0 0 1 ").append(left).append(" ").append(yTop).append(" Tm (")
+                        .append(pdfEsc(asciiSafe(title))).append(") Tj\n");
+                cs.append("/F2 8 Tf 1 0 0 1 ").append(left).append(" ").append(yTop - 16).append(" Tm (")
+                        .append(pdfEsc("Scope: " + scopeLabel + "   |   Period: " + asciiSafe(rangeLabel)
+                                + "   |   Generated: " + LocalDateTime.now().format(FULL)))
+                        .append(") Tj\n");
+                cs.append("/F2 8 Tf 1 0 0 1 ").append(left).append(" ").append(yTop - 30).append(" Tm (")
+                        .append(pdfEsc("Receivables: " + recvCount + "  (INR " + String.format("%,.2f", recvTotal)
+                                + ")   |   Payables: " + payCount + "  (INR " + String.format("%,.2f", payTotal)
+                                + ")   |   Net profit (recv.): INR " + String.format("%,.2f", profitTotal)))
+                        .append(") Tj\n");
+                cs.append("ET\n");
+                yTop = pageH - 78;
+            } else {
+                cs.append("BT /F1 10 Tf 1 0 0 1 ").append(left).append(" ").append(yTop).append(" Tm (")
+                        .append(pdfEsc(asciiSafe(title) + " (cont.)")).append(") Tj ET\n");
+                yTop = pageH - 54;
+            }
+
+            int headerBottom = yTop - headerBlockH;
+            cs.append("q 0.10 0.25 0.48 rg ").append(left).append(" ").append(headerBottom)
+                    .append(" ").append(tableW).append(" ").append(headerBlockH).append(" re f Q\n");
+            cs.append("BT /F1 ").append(fontSize).append(" Tf 1 1 1 rg\n");
+            for (int i = 0; i < headers.length; i++) {
+                String[] lines = headerLines.get(i);
+                int textY = yTop - padY - lineH + 2;
+                for (String ln : lines) {
+                    cs.append("1 0 0 1 ").append(colX[i] + 3).append(" ").append(textY).append(" Tm (")
+                            .append(pdfEsc(ln)).append(") Tj\n");
+                    textY -= lineH;
+                }
+            }
+            cs.append("ET\n");
+
+            int y = headerBottom;
+            boolean alt = false;
+            int rowsOnPage = 0;
+            while (rowIdx < wrappedRows.size()) {
+                int rh = rowHeights.get(rowIdx);
+                if (rowsOnPage > 0 && y - rh < 40) break;
+                List<String[]> cells = wrappedRows.get(rowIdx);
+                boolean isTotal = cells.size() > 3 && cells.get(3).length > 0
+                        && "TOTAL".equalsIgnoreCase(cells.get(3)[0]);
+                boolean isPayable = cells.size() > 0 && cells.get(0).length > 0
+                        && "Payable".equalsIgnoreCase(cells.get(0)[0]);
+
+                int available = Math.max(lineH + padY * 2, y - 40);
+                if (rh > available) rh = available;
+                int rowBottom = y - rh;
+
+                if (isTotal) {
+                    cs.append("q 0.90 0.93 0.88 rg ").append(left).append(" ").append(rowBottom)
+                            .append(" ").append(tableW).append(" ").append(rh).append(" re f Q\n");
+                } else if (isPayable) {
+                    cs.append("q 0.99 0.96 0.90 rg ").append(left).append(" ").append(rowBottom)
+                            .append(" ").append(tableW).append(" ").append(rh).append(" re f Q\n");
+                } else if (alt) {
+                    cs.append("q 0.93 0.97 0.94 rg ").append(left).append(" ").append(rowBottom)
+                            .append(" ").append(tableW).append(" ").append(rh).append(" re f Q\n");
+                }
+
+                cs.append("q 0.85 0.87 0.90 RG 0.4 w ")
+                        .append(left).append(" ").append(y).append(" m ")
+                        .append(right).append(" ").append(y).append(" l S Q\n");
+
+                cs.append("BT /F2 ").append(fontSize).append(" Tf 0 0 0 rg\n");
+                for (int i = 0; i < cells.size(); i++) {
+                    String[] lines = cells.get(i);
+                    int textY = y - padY - lineH + 2;
+                    int maxDraw = Math.max(1, (rh - padY * 2) / lineH);
+                    for (int li = 0; li < lines.length && li < maxDraw; li++) {
+                        cs.append("1 0 0 1 ").append(colX[i] + 3).append(" ").append(textY).append(" Tm (")
+                                .append(pdfEsc(lines[li])).append(") Tj\n");
+                        textY -= lineH;
+                    }
+                }
+                cs.append("ET\n");
+                y = rowBottom;
+                alt = !alt;
+                rowIdx++;
+                rowsOnPage++;
+            }
+
+            cs.append("q 0.10 0.25 0.48 rg ").append(left).append(" 28 ")
+                    .append(tableW).append(" 1.2 re f Q\n");
+            cs.append("BT /F2 7 Tf 1 0 0 1 ").append(left).append(" 16 Tm (")
+                    .append(pdfEsc("Seva Tyres - Transaction Report  |  Page " + pageNo
+                            + "  |  Computer generated"))
+                    .append(") Tj ET\n");
+            pageContents.add(cs.toString().getBytes(StandardCharsets.ISO_8859_1));
+            if (rowIdx >= wrappedRows.size()) break;
+        }
+
+        writeMultiPageLandscapePdf(pageContents, outFile, pageW, pageH);
+        return outFile;
     }
 
     /** Profit/Loss report — one row per transaction with net profit. */
@@ -98,7 +293,6 @@ public final class FileGenerationService {
         double totalDisc = 0;
         for (SaleTransaction t : txns) {
             List<SaleTransactionItem> items = saleRepo.findItemsBySaleId(t.getId());
-            // Always recompute so discount/round-off are applied consistently
             double profit = profitService.calculateNetProfit(t, items);
             profitSum += profit;
             totalSales += t.getTotal();
@@ -199,7 +393,7 @@ public final class FileGenerationService {
                 cs.append("/F1 13 Tf 1 0 0 1 ").append(left).append(" ").append(yTop).append(" Tm (")
                         .append(pdfEsc(asciiSafe(title))).append(") Tj\n");
                 cs.append("/F2 8 Tf 1 0 0 1 ").append(left).append(" ").append(yTop - 16).append(" Tm (")
-                        .append(pdfEsc("Net profit = (sales after discount excl. 18% GST) - buying cost + round-off"))
+                        .append(pdfEsc("Profit = total billing - buying cost - taxes - discount (+ round-off)"))
                         .append(") Tj\n");
                 cs.append("/F2 8 Tf 1 0 0 1 ").append(left).append(" ").append(yTop - 28).append(" Tm (")
                         .append(pdfEsc("Transactions: " + txnCount
